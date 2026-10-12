@@ -17,7 +17,7 @@ DEFAULT_PORT = 1099  # Java RMI 레지스트리 기본 포트
 class Registry:
     def __init__(self, port: int = DEFAULT_PORT) -> None:
         self._objects: Dict[str, Any] = {}
-        self._server = SimpleXMLRPCServer(("localhost", port), logRequests=False, allow_none=True)
+        self._server = SimpleXMLRPCServer(("127.0.0.1", port), logRequests=False, allow_none=True)
         self._server.register_instance(self)
 
     def rebind(self, name: str, obj: Any) -> None:
@@ -50,6 +50,9 @@ def lookup(url: str) -> Any:
     """Java 의 Naming.lookup("//localhost/RmiServer"). 원격 객체의 프록시를 돌려준다."""
     parsed = urlparse(url if "://" in url else "rmi:" + url)
     host = parsed.hostname or "localhost"
+    if host == "localhost":
+        # macOS 등에서는 localhost 가 IPv6(::1) 로 먼저 풀릴 수 있다. 서버는 IPv4 로 열려 있으므로 맞춰 준다.
+        host = "127.0.0.1"
     port = parsed.port or DEFAULT_PORT
     name = parsed.path.lstrip("/")
     proxy = ServerProxy(f"http://{host}:{port}/", allow_none=True)
