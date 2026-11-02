@@ -61,7 +61,7 @@ classDiagram
 
 ```bash
 cd python/microkernel
-python3 main.py
+python main.py
 ```
 
 실행 결과
