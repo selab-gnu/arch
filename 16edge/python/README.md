@@ -68,19 +68,19 @@ flowchart LR
 ```bash
 # 터미널 1 (클라우드)
 cd python/edge
-python3 cloud_service.py
+python cloud_service.py
 ```
 
 ```bash
 # 터미널 2 (엣지 노드)
 cd python/edge
-python3 edge_node.py
+python edge_node.py
 ```
 
 ```bash
 # 터미널 3 (센서)
 cd python/edge
-python3 sensor_device.py
+python sensor_device.py
 ```
 
 실행 결과 (터미널 3, 가운데 일부 생략)
