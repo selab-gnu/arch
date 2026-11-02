@@ -68,19 +68,19 @@ flowchart LR
 ```bash
 # 터미널 1 (상품 서비스)
 cd python/microservice
-python3 product_service.py
+python product_service.py
 ```
 
 ```bash
 # 터미널 2 (주문 서비스)
 cd python/microservice
-python3 order_service.py
+python order_service.py
 ```
 
 ```bash
 # 터미널 3 (클라이언트)
 cd python/microservice
-python3 test_client.py
+python test_client.py
 ```
 
 실행 결과 (터미널 3)
