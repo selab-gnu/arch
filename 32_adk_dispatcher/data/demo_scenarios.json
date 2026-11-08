@@ -1,0 +1,35 @@
+{
+  "_description": "--demo 옵션으로 자동 실행되는 상담 시나리오. 시나리오마다 새 세션에서 시작합니다.",
+  "scenarios": [
+    {
+      "title": "1. 청구 문의 — 중복 청구 확인과 환불",
+      "expect": "CoordinatorAgent → BillingSpecialist, 청구서 조회 후 환불 접수",
+      "turns": [
+        "고객 ID C-1001입니다. 10월 청구서 금액이 평소보다 너무 많이 나왔어요.",
+        "중복으로 청구된 금액은 환불해 주세요."
+      ]
+    },
+    {
+      "title": "2. 기술 문의 — 오류 코드와 장애 확인",
+      "expect": "CoordinatorAgent → TechSupportSpecialist, 오류 코드·서비스 상태·알려진 이슈 조회",
+      "turns": [
+        "서울 리전에서 2GB 파일을 업로드하면 계속 E504 오류가 납니다."
+      ]
+    },
+    {
+      "title": "3. 주제 전환 — 기술 문의 후 청구 문의",
+      "expect": "TechSupportSpecialist가 응대하다가 청구 질문이 오면 CoordinatorAgent를 거쳐 BillingSpecialist로 이동",
+      "turns": [
+        "API를 호출하면 E429가 떠요. 고객 ID는 C-1003이에요.",
+        "그런데 제 계정이 정지됐다고 나오는데 결제 문제인가요?"
+      ]
+    },
+    {
+      "title": "4. 의도 불분명 — 코디네이터가 되묻기",
+      "expect": "CoordinatorAgent가 위임하지 않고 청구/기술 중 무엇인지 확인",
+      "turns": [
+        "안녕하세요, 문의 좀 하려고요."
+      ]
+    }
+  ]
+}

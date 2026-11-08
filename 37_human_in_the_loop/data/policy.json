@@ -1,0 +1,6 @@
+{
+  "_description": "송금 승인 정책. 이 규칙은 프롬프트가 아니라 코드(check_policy / process_payment)에서 강제됩니다.",
+  "auto_approve_limit_krw": 1000000,
+  "require_approval_for_new_payee": true,
+  "currency": "KRW"
+}

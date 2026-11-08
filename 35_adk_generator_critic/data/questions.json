@@ -1,0 +1,21 @@
+{
+  "_description": "자연어 질문 → SQL 실습 문제. expected_sql은 정답 확인용이며 에이전트에게는 보여 주지 않습니다.",
+  "questions": [
+    {"id": 1, "level": "쉬움", "question": "서울에 사는 고객의 이름과 등급을 가입일 순서로 보여 줘.",
+     "expected_sql": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on"},
+    {"id": 2, "level": "쉬움", "question": "현재 판매 중인 전자제품을 가격이 비싼 순으로 보여 줘.",
+     "expected_sql": "SELECT prod_name, unit_price_krw FROM products WHERE category = 'electronics' AND is_active = 1 ORDER BY unit_price_krw DESC"},
+    {"id": 3, "level": "보통", "question": "2026년 10월에 들어온 주문 수를 주문 상태별로 세어 줘.",
+     "expected_sql": "SELECT status, COUNT(*) FROM orders WHERE ordered_at >= '2026-10-01' AND ordered_at < '2026-11-01' GROUP BY status"},
+    {"id": 4, "level": "보통", "question": "고객별 총 구매 금액을 구해서 많은 순으로 보여 줘. 취소되거나 환불된 주문은 빼 줘.",
+     "expected_sql": "SELECT c.cust_name, SUM(oi.qty * p.unit_price_krw) AS total FROM customers c JOIN orders o ON o.cust_id = c.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY c.cust_id ORDER BY total DESC"},
+    {"id": 5, "level": "보통", "question": "카테고리별 판매 수량 합계를 구해 줘. 취소·환불 주문은 제외해.",
+     "expected_sql": "SELECT p.category, SUM(oi.qty) FROM order_items oi JOIN products p ON p.prod_id = oi.prod_id JOIN orders o ON o.order_id = oi.order_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.category"},
+    {"id": 6, "level": "어려움", "question": "한 번도 주문하지 않은 고객의 이름과 도시를 보여 줘.",
+     "expected_sql": "SELECT cust_name, city FROM customers WHERE cust_id NOT IN (SELECT cust_id FROM orders)"},
+    {"id": 7, "level": "어려움", "question": "VIP 고객이 산 상품 중 가장 많이 팔린 상품 3개를 수량과 함께 보여 줘. 취소·환불 주문은 제외해.",
+     "expected_sql": "SELECT p.prod_name, SUM(oi.qty) AS q FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN customers c ON c.cust_id = o.cust_id JOIN products p ON p.prod_id = oi.prod_id WHERE c.grade = 'VIP' AND o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.prod_id ORDER BY q DESC LIMIT 3"},
+    {"id": 8, "level": "어려움", "question": "단종된 상품이 들어 있는 주문의 주문번호, 고객 이름, 주문 일시를 보여 줘.",
+     "expected_sql": "SELECT DISTINCT o.order_id, c.cust_name, o.ordered_at FROM orders o JOIN customers c ON c.cust_id = o.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE p.is_active = 0"}
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "_description": "가상의 클라우드 서비스 'Acme Cloud'의 청구 시스템 데이터 (실습용)",
+  "customers": {
+    "C-1001": {"name": "경상소프트웨어연구실", "email": "lab@gnu.ac.kr", "plan": "Pro", "monthly_fee": 299.0, "currency": "USD", "status": "active", "payment_method": "법인카드 ****-4821"},
+    "C-1002": {"name": "한빛데이터", "email": "billing@hanbitdata.example", "plan": "Enterprise", "monthly_fee": 1499.0, "currency": "USD", "status": "active", "payment_method": "계좌이체"},
+    "C-1003": {"name": "김민준", "email": "minjun.kim@example.com", "plan": "Starter", "monthly_fee": 29.0, "currency": "USD", "status": "suspended", "payment_method": "개인카드 ****-9910"}
+  },
+  "invoices": {
+    "INV-2026-1001": {"customer_id": "C-1001", "period": "2026-09", "issued": "2026-10-01", "due": "2026-10-31", "items": [{"desc": "Pro 플랜 월 요금", "amount": 299.0}, {"desc": "GPU 사용량 (40시간)", "amount": 1200.0}], "total": 1499.0, "status": "paid", "paid_on": "2026-10-15"},
+    "INV-2026-1101": {"customer_id": "C-1001", "period": "2026-10", "issued": "2026-11-01", "due": "2026-11-30", "items": [{"desc": "Pro 플랜 월 요금", "amount": 299.0}, {"desc": "GPU 사용량 (120시간)", "amount": 3600.0}, {"desc": "Pro 플랜 월 요금 (중복 청구)", "amount": 299.0}], "total": 4198.0, "status": "unpaid", "paid_on": null, "note": "같은 기간 플랜 요금이 두 번 청구됨 — 시스템 오류로 확인됨"},
+    "INV-2026-1102": {"customer_id": "C-1002", "period": "2026-10", "issued": "2026-11-01", "due": "2026-11-30", "items": [{"desc": "Enterprise 플랜 월 요금", "amount": 1499.0}, {"desc": "오브젝트 스토리지 (10 TB)", "amount": 230.0}], "total": 1729.0, "status": "paid", "paid_on": "2026-11-05"},
+    "INV-2026-1103": {"customer_id": "C-1003", "period": "2026-10", "issued": "2026-11-01", "due": "2026-11-07", "items": [{"desc": "Starter 플랜 월 요금", "amount": 29.0}], "total": 29.0, "status": "overdue", "paid_on": null, "note": "카드 결제 실패 3회 — 계정 일시 정지"}
+  },
+  "refund_policy": "시스템 오류로 인한 중복 청구는 전액 환불하며 영업일 기준 3~5일 내 처리됩니다. 그 외 환불은 결제 후 7일 이내에만 가능합니다."
+}

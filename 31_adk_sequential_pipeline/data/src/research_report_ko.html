@@ -1,0 +1,25 @@
+<html><head><meta charset="utf-8"><style>body{font-family:"Noto Sans CJK KR","Noto Sans",sans-serif;font-size:11pt;line-height:1.5;margin:0} h1{font-size:18pt} h2{font-size:13pt;margin-top:14pt} table{border-collapse:collapse;width:100%} td,th{border:1px solid #888;padding:4px 8px} th{background:#eee}</style></head><body>
+<h1>멀티 에이전트 시스템 도입 효과 분석 보고서</h1>
+<p>발행일: 2026-10-30<br>발행 기관: 소프트웨어아키텍처연구실<br>문의: arch-lab@gnu.ac.kr, 055-772-1234</p>
+<h2>요약</h2>
+<p>국내 IT 기업 42곳을 대상으로 멀티 에이전트 시스템 도입 효과를 조사하였다. 단일 에이전트 대비 작업 성공률은 평균 23.4% 향상되었으며, 병렬 패턴을 적용한 기업은 처리 시간이 평균 38% 단축되었다.</p>
+<h2>1. 조사 개요</h2>
+<p>조사 기간은 2026-07-01부터 2026-09-30까지이며, 응답 기업의 평균 연 매출은 1,250억 원이다. 설문과 심층 인터뷰를 병행하였다.</p>
+<h2>2. 패턴별 도입 현황</h2>
+<table><tr><th>패턴</th><th>도입 기업 비율</th><th>만족도</th></tr>
+<tr><td>Sequential Pipeline</td><td>64%</td><td>4.2 / 5</td></tr>
+<tr><td>Coordinator / Dispatcher</td><td>52%</td><td>4.0 / 5</td></tr>
+<tr><td>Parallel Fan-Out</td><td>31%</td><td>4.4 / 5</td></tr>
+<tr><td>Generator &amp; Critic</td><td>27%</td><td>4.1 / 5</td></tr>
+<tr><td>Human-in-the-Loop</td><td>45%</td><td>4.5 / 5</td></tr></table>
+<p style="page-break-before:always"></p>
+<h2>3. 비용 분석</h2>
+<p>멀티 에이전트 도입 기업의 월평균 LLM API 비용은 $12,800로 단일 에이전트 대비 1.8배 높았다. 그러나 사람의 검토 시간 감소를 반영한 총비용은 평균 15% 절감되었다.</p>
+<h2>4. 주요 시사점</h2>
+<p>- 처음에는 Sequential Pipeline으로 시작하고 점진적으로 패턴을 추가한 기업의 성공률이 가장 높았다.<br>
+- 공유 상태(state) 키 이름 충돌로 인한 장애가 전체 장애의 18%를 차지했다.<br>
+- 결제·배포 등 고위험 작업에 승인 단계를 둔 기업은 사고 건수가 0건이었다.</p>
+<h2>5. 참고 자료</h2>
+<p><span style="font-size:8pt">https://developers.googleblog.com/developers-guide-to-multi-agent-patterns-in-adk/</span><br>
+<span style="font-size:8pt">https://www.langchain.com/blog/choosing-the-right-multi-agent-architecture</span></p>
+</body></html>

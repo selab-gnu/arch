@@ -1,0 +1,248 @@
+"""
+AI 트렌드 보고서 작성 예제 (Google ADK - Hierarchical Decomposition 패턴, "러시아 인형")
+
+출처: Google Developers Blog, "Developer's guide to multi-agent patterns in ADK"
+      https://developers.googleblog.com/developers-guide-to-multi-agent-patterns-in-adk/
+
+구조:
+    Level 1  ReportWriter ── 보고서를 계획하고 작성 (직접 조사하지 않음)
+               └─ tools: AgentTool(ResearchAssistant)       ← 하위 계층 전체를 '함수 하나'처럼 호출
+    Level 2      ResearchAssistant ── 조사 요청 하나를 받아 검색 → 요약 후 결과 반환
+                   └─ tools: AgentTool(WebSearchAgent), AgentTool(SummarizerAgent)
+    Level 3          WebSearchAgent  ── 웹 검색으로 사실 수집 (search_web 또는 google_search)
+                     SummarizerAgent ── 수집한 원문을 핵심 사실로 압축
+
+    ReportWriter → ResearchAssistant → WebSearchAgent → (결과) → ResearchAssistant → SummarizerAgent
+                 → (결과) → ResearchAssistant → (조사 결과) → ReportWriter → 보고서
+
+    ※ 블로그 의사코드와 다른 점 — Level 2를 sub_agents 대신 AgentTool로 연결했습니다.
+       sub_agents는 '대화 제어권을 넘기는(transfer)' 방식이라, ResearchAssistant가 WebSearchAgent에게
+       넘기는 순간 차례가 끝나 버려 SummarizerAgent가 실행되지 않고 검색 원문이 그대로 위로 올라갑니다.
+       "위임 → 결과를 기다림 → 이어서 추론"하는 러시아 인형 구조는 AgentTool로만 만들어집니다.
+       (README.md의 '왜 Level 2도 AgentTool인가' 참고)
+
+검색 모드:
+    기본(local) : data/web_corpus.json 의 '가상 웹' 문서를 검색 — 오프라인, 결과 재현 가능
+    --live      : Gemini 내장 google_search 도구로 실제 웹 검색 (Gemini 모델 필요)
+
+설치:
+    pip install -U google-adk
+
+환경변수 (둘 중 하나):
+    export GOOGLE_API_KEY=...                  # https://aistudio.google.com 에서 발급
+    # 또는 Vertex AI: export GOOGLE_GENAI_USE_VERTEXAI=TRUE GOOGLE_CLOUD_PROJECT=... GOOGLE_CLOUD_LOCATION=...
+
+실행: (자세한 사용법은 README.md 참고)
+    python adk_hierarchical_report.py                                # "2026년 AI 트렌드" 보고서 (가상 웹)
+    python adk_hierarchical_report.py "AI 에이전트 보안 위협과 대응"     # 주제 지정
+    python adk_hierarchical_report.py "AI 트렌드" --live             # 실제 웹 검색
+    python adk_hierarchical_report.py --no-save                      # reports/ 에 저장하지 않음
+
+다른 모델을 쓰려면 ADK_MODEL 환경변수만 바꾸면 됩니다.  예) export ADK_MODEL=gemini-3.5-flash-lite
+"""
+
+import asyncio
+import json
+import os
+import re
+import sys
+import time
+from datetime import datetime
+from pathlib import Path
+
+from google.adk.agents import LlmAgent
+from google.adk.runners import InMemoryRunner
+from google.adk.tools import google_search
+from google.adk.tools.agent_tool import AgentTool
+from google.genai import types
+
+# 실습 화면을 깔끔하게: ADK의 실험 기능 경고와 내부 안내 로그는 숨깁니다 (오류는 그대로 표시).
+import logging
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning, module=r"google\.adk")
+warnings.filterwarnings("ignore", message=r"\[EXPERIMENTAL\]")          # 실험 기능 안내
+warnings.filterwarnings("ignore", message=r".*deprecated in favor of Workflow")  # ADK 2.x 워크플로 에이전트 안내
+logging.getLogger("google_adk").setLevel(logging.ERROR)
+
+MODEL = os.environ.get("ADK_MODEL", "gemini-3.8-flash")
+APP_NAME = "hierarchical_report_app"
+BASE_DIR = Path(__file__).parent
+CORPUS_PATH = BASE_DIR / "data" / "web_corpus.json"
+REPORT_DIR = BASE_DIR / "reports"
+DEFAULT_TOPIC = "2026년 AI 트렌드"
+
+
+# ---------------------------------------------------------------------------
+# Level 3 도구 — 오프라인 '가상 웹' 검색
+#   실제 검색 엔진 대신 data/web_corpus.json을 키워드 점수로 검색합니다.
+#   한국어는 조사·어미가 붙어 단어가 달라지므로('에이전트형', '에이전트의') 부분 문자열로 비교합니다.
+# ---------------------------------------------------------------------------
+def _load_corpus() -> list[dict]:
+    with open(CORPUS_PATH, encoding="utf-8") as f:
+        return json.load(f)["documents"]
+
+
+def search_web(query: str, max_results: int = 4) -> dict:
+    """웹에서 검색어와 관련된 문서를 찾아 제목, 출처, 날짜, URL, 본문을 반환합니다.
+
+    Args:
+        query: 검색어. 핵심 단어 2~5개 (예: "AI 에이전트 기업 도입", "온디바이스 소형 모델").
+        max_results: 돌려받을 최대 문서 수 (1~6).
+
+    Returns:
+        관련도 순으로 정렬된 검색 결과 목록.
+    """
+    terms = [t for t in re.split(r"[\s,·/]+", query.lower()) if len(t) >= 2]
+    if not terms:
+        return {"status": "error", "message": "검색어가 너무 짧습니다."}
+    scored = []
+    for doc in _load_corpus():
+        tags, title, body = " ".join(doc["tags"]).lower(), doc["title"].lower(), doc["body"].lower()
+        score = sum(3 * (t in tags) + 2 * (t in title) + body.count(t) for t in terms)
+        if score > 0:
+            scored.append((score, doc))
+    scored.sort(key=lambda x: -x[0])
+    results = [{k: d[k] for k in ("title", "source", "date", "url", "body")} for _, d in scored[: max(1, min(max_results, 6))]]
+    return {"status": "success", "query": query, "count": len(results), "results": results}
+
+
+# ---------------------------------------------------------------------------
+# 실행 과정을 '들여쓴 트리'로 보여 주는 콜백 — 어느 레벨이 무엇을 호출했는지 관찰용
+#   AgentTool로 감싼 하위 에이전트는 별도 러너에서 돌기 때문에 바깥 이벤트에는 잘 드러나지 않습니다.
+#   그래서 에이전트·도구 콜백으로 직접 기록합니다.
+# ---------------------------------------------------------------------------
+LEVEL = {"ReportWriter": 1, "ResearchAssistant": 2, "WebSearchAgent": 3, "SummarizerAgent": 3}
+_T0 = [time.perf_counter()]
+
+
+def _log(agent: str, msg: str) -> None:
+    indent = "    " * (LEVEL.get(agent, 1) - 1)
+    print(f"{time.perf_counter() - _T0[0]:6.1f}s  {indent}[L{LEVEL.get(agent, '?')} {agent}] {msg}")
+
+
+def on_agent_start(callback_context):
+    _log(callback_context.agent_name, "시작")
+
+
+def on_agent_end(callback_context):
+    name = callback_context.agent_name
+    _log(name, "완료 → 최종 보고서 작성" if LEVEL.get(name) == 1 else "완료 → 결과를 호출한 쪽으로 반환")
+
+
+def on_tool_call(tool, args, tool_context):
+    detail = args.get("query") or args.get("request") or ""
+    _log(tool_context.agent_name, f"🔧 {tool.name}({str(detail)[:60]!r})")
+
+
+# ---------------------------------------------------------------------------
+# 에이전트 계층 구성
+# ---------------------------------------------------------------------------
+def build_report_writer(live: bool = False) -> LlmAgent:
+    hooks = dict(before_agent_callback=on_agent_start, after_agent_callback=on_agent_end,
+                 before_tool_callback=on_tool_call)
+
+    # ---- Level 3: Tool Agents ----
+    web_searcher = LlmAgent(
+        name="WebSearchAgent",
+        model=MODEL,
+        description="Searches web for facts. 조사 요청 하나에 대해 웹을 검색해 출처가 달린 사실을 수집합니다.",
+        instruction=(
+            "당신은 웹 검색 담당입니다. 요청받은 주제에 대해 검색어를 바꿔 가며 2~3번 검색하세요.\n"
+            "검색 결과에 있는 사실만, 출처(제목·매체·날짜·URL)와 함께 빠짐없이 나열하세요. "
+            "요약하거나 해석하지 말고, 검색 결과에 없는 내용은 절대 추가하지 마세요."
+        ),
+        # live 모드는 Gemini 내장 Google 검색, 기본은 오프라인 가상 웹 검색
+        tools=[google_search] if live else [search_web],
+        **hooks,
+    )
+    summarizer = LlmAgent(
+        name="SummarizerAgent",
+        model=MODEL,
+        description="Condenses text. 긴 검색 원문을 출처가 달린 핵심 사실 몇 줄로 압축합니다.",
+        instruction=(
+            "당신은 요약 담당입니다. 받은 원문을 핵심 사실 3~6개의 bullet로 압축하세요.\n"
+            "- 숫자·날짜·주체는 원문 그대로 유지하고, 각 bullet 끝에 (매체, 날짜, URL)을 붙이세요.\n"
+            "- 서로 다른 출처가 같은 이야기를 하면 하나로 합치고, 원문에 없는 내용은 추가하지 마세요."
+        ),
+        **hooks,
+    )
+
+    # ---- Level 2: Coordinator Agent ----
+    research_assistant = LlmAgent(
+        name="ResearchAssistant",
+        model=MODEL,
+        description="Finds and summarizes info. 조사 주제 하나를 받아 검색과 요약을 거친 조사 결과를 돌려줍니다.",
+        instruction=(
+            "당신은 조사 보조원입니다. 조사 요청 하나를 받으면 다음 순서를 반드시 지키세요.\n"
+            "1. WebSearchAgent를 호출해 관련 사실을 수집합니다.\n"
+            "2. 수집된 원문 전체를 SummarizerAgent에 넘겨 핵심 사실로 압축합니다.\n"
+            "3. 요약된 사실을 출처와 함께 그대로 반환합니다. 직접 지어내지 마세요.\n"
+            "검색 결과가 비어 있으면 '관련 자료를 찾지 못함'이라고 반환하세요."
+        ),
+        # Coordinator manages the tool agents
+        # (블로그는 sub_agents=[...]지만, 결과를 돌려받아 다음 단계로 이어 가려면 AgentTool이어야 합니다)
+        tools=[AgentTool(agent=web_searcher), AgentTool(agent=summarizer)],
+        **hooks,
+    )
+
+    # ---- Level 1: Top-Level Agent ----
+    return LlmAgent(
+        name="ReportWriter",
+        model=MODEL,
+        description="주제에 대한 종합 보고서를 작성합니다.",
+        instruction=(
+            "Write a comprehensive report on AI trends. Use the ResearchAssistant to gather info.\n\n"
+            "사용자가 준 주제로 한국어 보고서를 작성하세요. 직접 검색하지 말고 다음 순서로 일하세요.\n"
+            "1. 주제를 서로 겹치지 않는 하위 주제 3~4개로 나눕니다.\n"
+            "2. 하위 주제마다 ResearchAssistant를 한 번씩 호출해 조사 결과를 받습니다.\n"
+            "3. 받은 조사 결과만 근거로 마크다운 보고서를 씁니다.\n"
+            "   형식: # 제목 / ## 요약(3줄) / ## 하위 주제별 섹션(수치와 출처 포함) / ## 시사점 / ## 출처(URL 목록)\n"
+            "조사 결과에 없는 수치나 사실은 쓰지 말고, 자료가 부족한 부분은 '추가 조사 필요'로 표시하세요."
+        ),
+        # Wrap the sub-agent hierarchy as a tool for the parent
+        tools=[AgentTool(agent=research_assistant)],
+        **hooks,
+    )
+
+
+SEARCH_MODE = os.environ.get("ADK_SEARCH_MODE", "local")
+root_agent = build_report_writer(live=SEARCH_MODE == "live")  # `adk web` / `adk run` 용
+
+
+# ---------------------------------------------------------------------------
+# 실행
+# ---------------------------------------------------------------------------
+async def write_report(topic: str, live: bool) -> str:
+    agent = build_report_writer(live=live)
+    runner = InMemoryRunner(agent=agent, app_name=APP_NAME)
+    session = await runner.session_service.create_session(app_name=APP_NAME, user_id="user")
+    message = types.Content(role="user", parts=[types.Part(text=f"주제: {topic}")])
+
+    _T0[0] = time.perf_counter()
+    report = ""
+    async for event in runner.run_async(user_id="user", session_id=session.id, new_message=message):
+        if event.author == "ReportWriter" and event.is_final_response() and event.content and event.content.parts:
+            report = "".join(p.text or "" for p in event.content.parts).strip()
+    return report
+
+
+def main() -> None:
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    live = "--live" in sys.argv or SEARCH_MODE == "live"
+    topic = " ".join(args) or DEFAULT_TOPIC
+
+    print(f"▶ 주제: {topic}")
+    print(f"▶ 검색 모드: {'실제 웹 (google_search)' if live else '가상 웹 (data/web_corpus.json)'}\n")
+    report = asyncio.run(write_report(topic, live))
+
+    print(f"\n{'#' * 70}\n📄 최종 보고서 (ReportWriter)\n{'#' * 70}\n\n{report or '(보고서를 받지 못했습니다)'}")
+    if report and "--no-save" not in sys.argv:
+        REPORT_DIR.mkdir(exist_ok=True)
+        out = REPORT_DIR / f"report_{datetime.now():%Y%m%d_%H%M%S}.md"
+        out.write_text(report + "\n", encoding="utf-8")
+        print(f"\n💾 저장: {out}")
+
+
+if __name__ == "__main__":
+    main()

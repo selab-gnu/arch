@@ -1,0 +1,20 @@
+{
+  "_description": "--demo 로 실행할 송금 요청 시나리오. demo_decision은 --auto 모드에서 사람 대신 자동으로 내릴 결정입니다.",
+  "scenarios": [
+    {"id": 1, "title": "소액 정기 결제 (자동 처리)",
+     "request": "운영 계좌(OPS-001)에서 클라우드나인 호스팅에 11월 서버 이용료 850,000원을 송금해 줘.",
+     "expect": "한도 이내 + 등록 거래처 → 승인 없이 바로 처리", "demo_decision": null},
+    {"id": 2, "title": "고액 송금 (사람 승인 → 승인)",
+     "request": "운영 계좌(OPS-001)에서 한빛 소프트웨어 라이선스에 연간 라이선스 비용 12,000,000원을 송금해 줘.",
+     "expect": "한도 초과 → 실행 멈춤 → 승인 후 송금", "demo_decision": {"confirmed": true, "reviewer": "이선아 팀장", "comment": "연간 계약서 확인함"}},
+    {"id": 3, "title": "신규 거래처 고액 송금 (사람 승인 → 거절)",
+     "request": "운영 계좌(OPS-001)에서 퀵마켓 컨설팅에 컨설팅 선급금 18,500,000원을 급히 보내 줘.",
+     "expect": "한도 초과 + 미등록 거래처 → 실행 멈춤 → 거절, 송금 안 됨", "demo_decision": {"confirmed": false, "reviewer": "이선아 팀장", "comment": "계약서 없음, 신규 거래처 확인 필요"}},
+    {"id": 4, "title": "소액이지만 신규 거래처 (사람 승인 → 승인)",
+     "request": "연구개발 계좌(RND-003)에서 데이터랩스에 데이터셋 구매비 300,000원을 보내 줘.",
+     "expect": "한도 이내지만 미등록 거래처 → 실행 멈춤 → 승인 후 송금", "demo_decision": {"confirmed": true, "reviewer": "박서연 책임", "comment": "견적서 확인"}},
+    {"id": 5, "title": "잔액 부족 (시스템 차단)",
+     "request": "연구개발 계좌(RND-003)에서 진주 시설관리에 시설 보수비 5,000,000원을 송금해 줘.",
+     "expect": "잔액 부족 → 승인 요청 없이 차단", "demo_decision": null}
+  ]
+}
