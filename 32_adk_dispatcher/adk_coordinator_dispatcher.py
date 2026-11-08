@@ -37,6 +37,7 @@ API 키 (아래 중 하나만 있으면 자동으로 감지해 해당 모델을 
 """
 
 import asyncio
+import re
 import json
 import os
 import sys
@@ -123,11 +124,42 @@ def resolve_model():
         return name, f"OpenAI ({name}, OpenAI API 키)", provider
     if provider == "claude":
         return name, f"Claude ({name}, Vertex AI)", provider
-    return name, f"Gemini ({name})", provider
+    # Gemini는 일시적 오류(요청 폭주 503, 한도 429 등)에서 자동으로 재시도하도록 설정합니다.
+    from google.adk.models.google_llm import Gemini
+    from google.genai import types as _gtypes
+    gemini = Gemini(model=name, retry_options=_gtypes.HttpRetryOptions(
+        attempts=6, initial_delay=2, max_delay=30, exp_base=2,
+        http_status_codes=[408, 429, 500, 502, 503, 504]))
+    return gemini, f"Gemini ({name})", provider
 
 
 MODEL, MODEL_LABEL, MODEL_PROVIDER = resolve_model()
 _READY = [False]
+
+
+# 서버 과부하·요청 한도 같은 '일시적' 오류를 알아보는 패턴 (재시도 후에도 실패했을 때 안내용)
+TRANSIENT_ERROR_PATTERN = r"\b(503|529|429|500|502|504)\b|UNAVAILABLE|RESOURCE_EXHAUSTED|overloaded|high demand|rate.?limit|try again later"
+
+
+def _error_text(e: BaseException) -> str:
+    """예외와 그 원인(cause/context)까지 이어 붙인 메시지 — ADK가 원래 오류를 감싸서 올리는 경우 대비."""
+    parts, seen = [], set()
+    while e is not None and id(e) not in seen:
+        seen.add(id(e)); parts.append(f"{type(e).__name__}: {e}")
+        e = e.__cause__ or e.__context__
+    return " | ".join(parts)
+
+
+def transient_error_message(e: BaseException, label: str) -> str | None:
+    msg = _error_text(e)
+    if not re.search(TRANSIENT_ERROR_PATTERN, msg, re.I):
+        return None
+    short = re.search(r"(\b\d{3}\b[^|]{0,160})", msg)
+    return (f"⏳ 모델 서버가 일시적으로 응답하지 못했습니다 ({label})\n"
+            f"   {short.group(1).strip() if short else msg[:160]}\n"
+            "   자동 재시도(최대 6회)까지 실패했습니다. 이는 코드 문제가 아니라 서버 과부하·요청 한도 때문입니다.\n"
+            "   → 1~2분 뒤 다시 실행하거나, 다른 모델을 써 보세요.\n"
+            "     예) ADK_MODEL=gemini-3.5-flash-lite python ...   /   ADK_PROVIDER=claude python ...")
 
 
 def check_api_key() -> None:
@@ -155,6 +187,9 @@ def run_safe(coro):
     try:
         return asyncio.run(coro)
     except Exception as e:
+        transient = transient_error_message(e, MODEL_LABEL)
+        if transient:
+            raise SystemExit(transient)
         msg = f"{type(e).__name__}: {e}"
         if _re.search(r"Unauthorized|Authentication|API key|api_key|401|PERMISSION_DENIED|invalid.*key", msg, _re.I):
             raise SystemExit(f"❌ API 키 인증 실패 ({MODEL_LABEL})\n   {msg[:200]}\n"
