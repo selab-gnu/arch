@@ -6,6 +6,8 @@ Generator가 거친 첫 초안을 쓰면, Critic이 **실제로 실행·측정**
 > 원문: Google Developers Blog, [Developer's guide to multi-agent patterns in ADK](https://developers.googleblog.com/developers-guide-to-multi-agent-patterns-in-adk/)
 > 블로그의 ADK 의사코드를 실제로 실행되는 코드로 완성했습니다. 블로그 그림의 예시("Optimize complex algorithm for performance")를 따랐습니다.
 
+**Gemini · Claude · OpenAI 모두 지원합니다.** Claude Code에서 쓰는 Anthropic API 키나 Codex에서 쓰는 OpenAI API 키가 터미널에 설정되어 있으면, 코드를 고치지 않고 그대로 실행됩니다(키를 자동으로 감지). → [API 키 설정](#api-키-설정)
+
 ## 구조
 
 ```
@@ -84,28 +86,59 @@ cd 36_adk_iterative_refinement
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -U google-adk
+
+# 사용할 모델에 따라 하나 더 설치 (Gemini만 쓰면 생략)
+pip install -U anthropic       # Claude (Anthropic API 키)
+pip install -U openai          # OpenAI GPT (OpenAI API 키)
 ```
 
 ## API 키 설정
 
-**방법 A — Google AI Studio (간단)**
+아래 키 중 **하나만** 설정되어 있으면 프로그램이 알아서 감지해 해당 모델을 씁니다. 실행하면 어떤 모델을 쓰는지 먼저 표시됩니다.
 
-[Google AI Studio](https://aistudio.google.com)에서 API 키를 발급받은 뒤:
-
-```bash
-export GOOGLE_API_KEY="발급받은_키"
+```
+🧠 사용 모델: Claude (claude-sonnet-5-5, Anthropic API 키)
 ```
 
-**방법 B — Vertex AI (Google Cloud)**
+| 쓰는 도구 / 키 | 설정 | 기본 모델 | 추가 설치 |
+|---|---|---|---|
+| **Gemini** (Google AI Studio) | `export GOOGLE_API_KEY="..."` | `gemini-3.8-flash` | — |
+| **Claude Code**에서 쓰는 **Anthropic API 키** | `export ANTHROPIC_API_KEY="sk-ant-..."` | `claude-sonnet-5-5` | `pip install anthropic` |
+| **Codex**에서 쓰는 **OpenAI API 키** | `export OPENAI_API_KEY="sk-..."` | `gpt-5.6` | `pip install openai` |
+| Vertex AI (Google Cloud) | `export GOOGLE_GENAI_USE_VERTEXAI=TRUE`<br>`export GOOGLE_CLOUD_PROJECT="..."`<br>`export GOOGLE_CLOUD_LOCATION="us-central1"` | `gemini-3.8-flash` | `gcloud auth application-default login` |
+
+### Claude Code · Codex를 쓰고 있다면
+
+이미 Claude Code나 Codex를 **API 키로** 쓰고 있다면, 그 키가 들어 있는 터미널에서 바로 실행하면 됩니다.
 
 ```bash
-export GOOGLE_GENAI_USE_VERTEXAI=TRUE
-export GOOGLE_CLOUD_PROJECT="내-프로젝트-ID"
-export GOOGLE_CLOUD_LOCATION="us-central1"
-gcloud auth application-default login
+echo $ANTHROPIC_API_KEY     # Claude Code용 키가 보이면 → Claude로 실행됨
+echo $OPENAI_API_KEY        # Codex용 키가 보이면     → OpenAI로 실행됨
+python adk_iterative_refinement.py all
 ```
 
-> `python`으로 직접 실행할 때는 위처럼 터미널에서 export해야 합니다. 키가 담긴 `.env`는 git에 커밋하지 마세요.
+> **구독 계정으로 로그인해서 쓰는 경우는 해당되지 않습니다.**
+> Claude Code에 Claude 구독(Pro/Max 등)으로 로그인했거나, Codex에 ChatGPT 계정으로 로그인했다면, 이 로그인 정보는 API 키가 아니어서 이 프로그램에서 쓸 수 없습니다.
+> 이때는 [Anthropic Console](https://console.anthropic.com) 또는 [OpenAI Platform](https://platform.openai.com/api-keys)에서 **API 키를 따로 발급**받아 위처럼 설정하세요. API 사용량은 구독과 별도로 과금됩니다.
+
+### 키가 여러 개일 때 / 모델을 직접 고를 때
+
+자동 감지 순서는 **Gemini → Claude → OpenAI**입니다. 다른 것을 쓰려면 지정하세요.
+
+```bash
+# 공급자만 고르기 (기본 모델 사용)
+ADK_PROVIDER=claude python adk_iterative_refinement.py all
+ADK_PROVIDER=openai python adk_iterative_refinement.py all
+
+# 모델 이름까지 직접 지정 (이름으로 공급자를 판단: claude-* → Claude, gpt-*/o* → OpenAI, 그 외 → Gemini)
+ADK_MODEL=claude-opus-5-5 python adk_iterative_refinement.py all
+ADK_MODEL=gpt-5.6-luna    python adk_iterative_refinement.py all
+```
+
+> **Claude를 Anthropic API 키로 쓸 때 주의**: ADK에 `model="claude-sonnet-5-5"`처럼 이름만 넘기면, ADK는 이것을 **Vertex AI(Google Cloud)의 Claude**로 연결해 Google Cloud 프로젝트를 요구합니다.
+> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(코드의 `resolve_model()` 참고).
+
+> `python`으로 직접 실행할 때는 위처럼 터미널에서 export해야 합니다. `adk web`은 에이전트 폴더의 `.env` 파일에 키를 적으면 읽습니다. 키가 담긴 `.env`는 git에 커밋하지 마세요.
 
 ## 실행
 
@@ -177,7 +210,7 @@ mkdir -p refine_agent
 cp adk_iterative_refinement.py refine_agent/agent.py
 cp -r data refine_agent/data
 echo "from . import agent" > refine_agent/__init__.py
-echo "GOOGLE_API_KEY=발급받은_키" > refine_agent/.env
+echo "GOOGLE_API_KEY=발급받은_키" > refine_agent/.env      # 또는 ANTHROPIC_API_KEY=... / OPENAI_API_KEY=...
 adk web                              # 브라우저에서 http://localhost:8000 → refine_agent 선택
 ```
 
@@ -198,7 +231,9 @@ adk web                              # 브라우저에서 http://localhost:8000 
 
 | 항목 | 방법 | 기본값 |
 |---|---|---|
-| 사용 모델 | `export ADK_MODEL=gemini-3.5-flash-lite` | `gemini-3.8-flash` |
+| 모델 공급자 | `export ADK_PROVIDER=gemini` / `claude` / `openai` | 설정된 키로 자동 감지 |
+| 사용 모델 | `export ADK_MODEL=gemini-3.5-flash-lite` (또는 `claude-opus-5-5`, `gpt-5.6-luna` …) | 공급자별 기본 모델 |
+| 공급자별 기본 모델 | 코드의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
 | 최대 반복 횟수 | `MAX_ITERATIONS=5 python ...` | 3 |
 | 조기 종료 | `ENABLE_QUALITY_GATE=0` 으로 끄기 | 켜짐 |
 | 벤치마크 시간 제한 | `BENCH_TIMEOUT=20 python ...` (초) | 10 |
@@ -209,8 +244,12 @@ adk web                              # 브라우저에서 http://localhost:8000 
 | 증상 | 원인과 해결 |
 |---|---|
 | `ModuleNotFoundError: google.adk` | 가상환경을 활성화했는지 확인하고 `pip install -U google-adk` |
-| API 키·인증 관련 오류 | `echo $GOOGLE_API_KEY`로 현재 터미널에 키가 설정되어 있는지 확인 |
-| `404 ... model not found` | 사용 가능한 모델 ID로 `ADK_MODEL` 변경 (Google AI Studio의 모델 목록 참고) |
+| `API 키가 설정되어 있지 않습니다` | `echo $GOOGLE_API_KEY $ANTHROPIC_API_KEY $OPENAI_API_KEY`로 현재 터미널에 키가 있는지 확인. 다른 터미널 창이나 IDE에서 설정한 키는 보이지 않을 수 있음 |
+| `❌ API 키 인증 실패` (`Unauthorized`, `401`) | 키 값 오타, 만료된 키, 또는 **구독 로그인 정보를 키로 착각**한 경우. 콘솔에서 API 키를 새로 발급 |
+| `Claude를 쓰려면 anthropic 패키지가 필요합니다` / `OpenAI 모델을 쓰려면 openai 패키지가 필요합니다` | `pip install -U anthropic` / `pip install -U openai` |
+| `GOOGLE_CLOUD_PROJECT ... must be set` (Claude 사용 시) | Claude가 Vertex AI로 연결된 경우. `ANTHROPIC_API_KEY`를 설정하고 `GOOGLE_GENAI_USE_VERTEXAI`는 해제 |
+| 의도와 다른 공급자가 선택됨 | 키가 여러 개 설정됨. `ADK_PROVIDER=claude`처럼 직접 지정 |
+| `404 ... model not found` / `model_not_found` | 계정에서 쓸 수 없는 모델 이름. 각 공급자의 모델 목록에서 확인해 `ADK_MODEL`로 지정 |
 | 반복 1에서 바로 끝남 | 모델이 첫 초안부터 효율적인 코드를 씀. 정상입니다. 개선 과정을 보고 싶으면 `ENABLE_QUALITY_GATE=0`으로 실행 |
 | 측정마다 `시간 초과` | 아직 지수/이차 시간 풀이. Critic 제안대로 개선되는지 지켜보거나 `MAX_ITERATIONS`를 늘리기 |
 | 한 번 실행에 오래 걸림 | 느린 초안은 측정에 최대 `BENCH_TIMEOUT`초가 걸림. 반복마다 모델 호출도 3회 이상 일어남 |

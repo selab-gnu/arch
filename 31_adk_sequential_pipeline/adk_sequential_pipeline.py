@@ -13,10 +13,15 @@ PDF 처리 파이프라인 예제 (Google ADK - Sequential Pipeline 패턴, "조
 
 설치:
     pip install -U google-adk pypdf fpdf2      # fpdf2는 샘플 PDF 생성용
+    pip install -U anthropic                   # Claude를 쓸 때만
+    pip install -U openai                      # OpenAI GPT를 쓸 때만
 
-환경변수 (둘 중 하나):
-    export GOOGLE_API_KEY=...                  # https://aistudio.google.com 에서 발급
+API 키 (아래 중 하나만 있으면 자동으로 감지해 해당 모델을 사용):
+    export GOOGLE_API_KEY=...       # Gemini      — https://aistudio.google.com
+    export ANTHROPIC_API_KEY=...    # Claude      — Claude Code에서 쓰는 Anthropic API 키 (pip install anthropic)
+    export OPENAI_API_KEY=...       # OpenAI GPT  — Codex에서 쓰는 OpenAI API 키 (pip install openai)
     # 또는 Vertex AI: export GOOGLE_GENAI_USE_VERTEXAI=TRUE GOOGLE_CLOUD_PROJECT=... GOOGLE_CLOUD_LOCATION=...
+    키가 여러 개면 ADK_PROVIDER=gemini|claude|openai 로 고르고, 모델은 ADK_MODEL 로 직접 지정할 수 있습니다.
 
 실행: (자세한 사용법은 README.md 참고)
     python adk_sequential_pipeline.py                         # data/invoice_en.pdf 처리
@@ -24,7 +29,7 @@ PDF 처리 파이프라인 예제 (Google ADK - Sequential Pipeline 패턴, "조
     python adk_sequential_pipeline.py data/                   # data 폴더의 PDF 전체 처리
     python adk_sequential_pipeline.py ~/Documents/my.pdf      # 내 PDF 처리
 
-다른 모델을 쓰려면 ADK_MODEL 환경변수만 바꾸면 됩니다.  예) export ADK_MODEL=gemini-3.5-flash-lite
+모델 지정 예) export ADK_MODEL=gemini-3.5-flash-lite / claude-opus-5-5 / gpt-5.6-luna
 """
 
 import asyncio
@@ -39,7 +44,84 @@ from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
-MODEL = os.environ.get("ADK_MODEL", "gemini-3.8-flash")
+# 실습 화면을 깔끔하게: ADK의 실험 기능·deprecated 안내와 내부 로그는 숨깁니다 (오류는 그대로 표시).
+import logging
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning, module=r"google\.adk")
+warnings.filterwarnings("ignore", message=r"\[EXPERIMENTAL\]")
+warnings.filterwarnings("ignore", message=r".*deprecated in favor of Workflow")
+logging.getLogger("google_adk").setLevel(logging.CRITICAL)  # ADK 내부의 중복 오류 로그 숨김 (예외 자체는 그대로 전달됨)
+
+
+# ---------------------------------------------------------------------------
+# 모델 선택 — Gemini / Claude / OpenAI 중 '가지고 있는 API 키'에 맞춰 자동으로 고릅니다.
+#   우선순위: ADK_MODEL(직접 지정) > ADK_PROVIDER(공급자 지정) > 설정된 키 자동 감지(Gemini → Claude → OpenAI)
+# ---------------------------------------------------------------------------
+DEFAULT_MODELS = {
+    "gemini": "gemini-3.8-flash",
+    "claude": "claude-sonnet-5-5",
+    "openai": "gpt-5.6",
+}
+
+
+def _has_key(provider: str) -> bool:
+    env = os.environ
+    return {
+        "gemini": bool(env.get("GOOGLE_API_KEY") or env.get("GEMINI_API_KEY")
+                       or env.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("1", "true")),
+        "claude": bool(env.get("ANTHROPIC_API_KEY")),
+        "openai": bool(env.get("OPENAI_API_KEY")),
+    }[provider]
+
+
+def _provider_of(model_name: str) -> str:
+    if model_name.startswith("claude-"):
+        return "claude"
+    if re.match(r"(gpt-|o\d)", model_name):
+        return "openai"
+    return "gemini"
+
+
+def resolve_model():
+    """ADK에 넘길 모델을 고릅니다. 반환값: (model, 설명 문자열)
+
+    - Gemini, OpenAI: 모델 이름 문자열만 넘기면 ADK가 알아서 연결합니다
+      (gpt-* 이름은 ADK의 OpenAI 연결로 처리되며 OPENAI_API_KEY를 사용).
+    - Claude: 'claude-...' 문자열만 넘기면 ADK는 'Vertex AI의 Claude'로 연결해 Google Cloud 프로젝트를 요구합니다.
+      Anthropic API 키(ANTHROPIC_API_KEY)로 직접 쓰려면 AnthropicLlm 객체로 감싸야 합니다.
+    """
+    name = os.environ.get("ADK_MODEL", "").strip()
+    provider = os.environ.get("ADK_PROVIDER", "").strip().lower()
+    if provider and provider not in DEFAULT_MODELS:
+        raise SystemExit(f"ADK_PROVIDER는 {', '.join(DEFAULT_MODELS)} 중 하나여야 합니다 (현재: {provider}).")
+
+    if name:
+        provider = provider or _provider_of(name)
+    else:
+        if not provider:
+            provider = next((p for p in DEFAULT_MODELS if _has_key(p)), "gemini")
+        name = DEFAULT_MODELS[provider]
+
+    vertex = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("1", "true")
+    if provider == "claude" and not vertex:
+        try:
+            from google.adk.models.anthropic_llm import AnthropicLlm
+        except ImportError:
+            raise SystemExit("Claude를 쓰려면 anthropic 패키지가 필요합니다:  pip install -U anthropic")
+        return AnthropicLlm(model=name), f"Claude ({name}, Anthropic API 키)"
+    if provider == "openai":
+        try:
+            import openai  # noqa: F401
+        except ImportError:
+            raise SystemExit("OpenAI 모델을 쓰려면 openai 패키지가 필요합니다:  pip install -U openai")
+        return name, f"OpenAI ({name}, OpenAI API 키)"
+    if provider == "claude":
+        return name, f"Claude ({name}, Vertex AI)"
+    return name, f"Gemini ({name})"
+
+
+MODEL, MODEL_LABEL = resolve_model()
 APP_NAME = "pdf_pipeline_app"
 MAX_CHARS = 20_000  # LLM에 넘길 PDF 텍스트 최대 길이 (긴 문서는 잘라서 사용)
 
@@ -277,11 +359,33 @@ def collect_pdfs(args: list[str]) -> list[Path]:
     return pdfs
 
 
+def check_api_key() -> None:
+    """실행 전에 선택된 모델의 API 키가 있는지 확인하고, 없으면 설정 방법을 안내합니다."""
+    provider = "claude" if MODEL_LABEL.startswith("Claude") else "openai" if MODEL_LABEL.startswith("OpenAI") else "gemini"
+    if not _has_key(provider) and not (provider == "claude" and "Vertex" in MODEL_LABEL):
+        raise SystemExit(
+            f"선택된 모델: {MODEL_LABEL}\n"
+            "API 키가 설정되어 있지 않습니다. 아래 중 하나를 설정하세요.\n"
+            "  export GOOGLE_API_KEY=...      # Gemini\n"
+            "  export ANTHROPIC_API_KEY=...   # Claude (Claude Code에서 쓰는 Anthropic API 키)\n"
+            "  export OPENAI_API_KEY=...      # OpenAI (Codex에서 쓰는 OpenAI API 키)"
+        )
+
+
 def main() -> None:
+    check_api_key()
+    print(f"🧠 사용 모델: {MODEL_LABEL}")
     pdfs = collect_pdfs(sys.argv[1:])
     for pdf_path in pdfs:
         print(f"\n{'=' * 70}\n▶ 처리 중: {pdf_path}\n{'=' * 70}")
-        state = asyncio.run(run_pipeline(str(pdf_path.resolve())))
+        try:
+            state = asyncio.run(run_pipeline(str(pdf_path.resolve())))
+        except Exception as e:  # 키 오류는 긴 추적 대신 짧게 안내
+            msg = f"{type(e).__name__}: {e}"
+            if re.search(r"Unauthorized|Authentication|API key|api_key|401|PERMISSION_DENIED|invalid.*key", msg, re.I):
+                raise SystemExit(f"❌ API 키 인증 실패 ({MODEL_LABEL})\n   {msg[:200]}\n"
+                                 "   키 값이 맞는지, 해당 서비스의 API 키(구독 로그인 아님)인지 확인하세요. README의 '문제 해결' 참고.")
+            raise
 
         print("\n----- session.state['structured_data'] -----\n")
         print(state.get("structured_data", "(없음)"))
