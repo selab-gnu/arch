@@ -18,6 +18,93 @@ LangChain/LangGraph의 **Subagents(Supervisor) 패턴**으로 만든 리서치 �
 
 핵심 아이디어: 서브에이전트를 `@tool`로 감싸서 총괄 에이전트가 **도구 호출로 일을 맡기도록** 합니다. 서브에이전트는 매번 깨끗한 컨텍스트에서 시작하므로(컨텍스트 격리) 총괄의 대화가 비대해지지 않습니다.
 
+## 그래프 설계 (LangGraph)
+
+코드에서 `langgraph`를 직접 import하지는 않지만, `langchain.agents.create_agent`가 내부적으로 **LangGraph 그래프**를 만들어 돌려줍니다. 따라서 `supervisor`, `researcher_agent`, `writer_agent` 세 개 모두 실제로는 컴파일된 LangGraph 그래프(`CompiledStateGraph`)입니다.
+
+### 에이전트 하나의 그래프
+
+`create_agent`가 만드는 그래프는 세 에이전트 모두 같은 모양입니다. 모델이 도구를 호출하면 도구를 실행하고 다시 모델로 돌아가며, 도구 호출이 없으면 끝납니다.
+
+```mermaid
+flowchart LR
+    S([START]) --> M[model<br/>LLM 호출]
+    M -- 도구 호출 있음 --> T[tools<br/>도구 실행]
+    T --> M
+    M -- 도구 호출 없음 --> E([END])
+```
+
+그래프 상태(state)는 메시지 목록 `{"messages": [...]}`이며, 각 노드가 실행될 때마다 메시지가 하나씩 쌓입니다.
+
+### 전체 그래프 (총괄 + 서브에이전트)
+
+총괄 그래프의 `tools` 노드가 `research` / `write_report` 도구를 실행하면, 그 도구 안에서 서브에이전트 그래프가 **별도의 새 상태로** 실행됩니다(컨텍스트 격리). 총괄에게는 서브에이전트의 최종 메시지 하나만 돌아옵니다.
+
+```mermaid
+flowchart TB
+    U([사용자 질문]) --> SM
+
+    subgraph SUP["supervisor 그래프"]
+        SM[model<br/>계획 · 위임 · 취합] -- 도구 호출 --> ST[tools]
+        ST --> SM
+    end
+
+    SM -- 도구 호출 없음 --> OUT([최종 보고서])
+
+    ST -- "research(subtopic)<br/>하위 주제마다 병렬 호출" --> RM
+    ST -- "write_report(research_notes)" --> WM
+
+    subgraph RES["researcher_agent 그래프 (호출마다 새 상태)"]
+        RM[model] -- 도구 호출 --> RT[tools<br/>TavilySearch]
+        RT --> RM
+    end
+
+    subgraph WRI["writer_agent 그래프 (도구 없음)"]
+        WM[model<br/>보고서 작성]
+    end
+
+    RM -. 최종 메시지: 출처 달린 사실 목록 .-> ST
+    WM -. 최종 메시지: 보고서 .-> ST
+```
+
+### 실행 흐름 예시
+
+```mermaid
+sequenceDiagram
+    participant U as 사용자
+    participant S as supervisor
+    participant R as researcher_agent
+    participant W as writer_agent
+
+    U->>S: 질문
+    S->>S: 3~5개 하위 주제로 분해
+    par 하위 주제별 병렬 조사
+        S->>R: research(하위 주제 1)
+        R-->>S: 사실 목록 + 출처
+    and
+        S->>R: research(하위 주제 2)
+        R-->>S: 사실 목록 + 출처
+    end
+    opt 빈 곳이 있으면
+        S->>R: research(추가 주제)
+        R-->>S: 사실 목록 + 출처
+    end
+    S->>W: write_report(질문 + 조사 결과)
+    W-->>S: 보고서
+    S-->>U: 최종 보고서
+```
+
+### LangGraph 기능이 쓰이는 곳
+
+| 코드 | LangGraph 관점 |
+|---|---|
+| `create_agent(...)` | model ↔ tools 루프 그래프를 만들어 컴파일 |
+| `{"messages": [...]}` | 그래프의 입력 상태 |
+| `result["messages"][-1]` | 최종 상태에서 마지막 메시지 꺼내기 |
+| `supervisor.stream(..., stream_mode="values")` | 노드 실행이 끝날 때마다 전체 상태를 받아 `[위임]` 로그 출력 |
+
+> 이 예제는 흐름 결정을 총괄 모델에게 맡깁니다. 흐름을 코드로 고정하고 싶다면 LangGraph의 `StateGraph`로 "계획 → 병렬 조사 → 작성" 노드와 엣지를 직접 정의하는 방식으로 바꿀 수 있습니다.
+
 ## 요구 사항
 
 - Python 3.10 이상 권장
