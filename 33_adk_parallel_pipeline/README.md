@@ -280,15 +280,6 @@ ADK_MODEL=gpt-5.6-luna    python adk_parallel_code_review.py
 ADK_MODEL=gemini-3.5-flash-lite python adk_parallel_code_review.py
 ```
 
-**Vertex AI(Google Cloud)를 쓰는 경우**에는 API 키 대신 다음을 설정합니다.
-
-```bash
-export GOOGLE_GENAI_USE_VERTEXAI=TRUE
-export GOOGLE_CLOUD_PROJECT="내-프로젝트-ID"
-export GOOGLE_CLOUD_LOCATION="us-central1"
-gcloud auth application-default login
-```
-
 > **Claude를 Anthropic API 키로 쓸 때 주의**: ADK에 `model="claude-sonnet-5-5"`처럼 이름만 넘기면, ADK는 이것을 **Vertex AI(Google Cloud)의 Claude**로 연결해 Google Cloud 프로젝트를 요구합니다.
 > 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(코드의 `resolve_model()` 참고).
 
@@ -344,7 +335,6 @@ adk web                              # 브라우저에서 http://localhost:8000 
 |---|---|
 | `API 키가 설정되어 있지 않습니다` | `echo $GOOGLE_API_KEY $ANTHROPIC_API_KEY $OPENAI_API_KEY`로 현재 터미널에 키가 있는지 확인. 새 터미널을 열었다면 `export`를 다시 하거나 `~/.zshrc`에 등록 |
 | `❌ API 키 인증 실패` (`Unauthorized`, `401`) | 키 값 오타, 만료된 키, 또는 **구독 로그인 정보를 키로 착각**한 경우. [Step 3](#step-3-api-키-발급받기)의 페이지에서 API 키를 새로 발급 |
-| `GOOGLE_CLOUD_PROJECT ... must be set` (Claude 사용 시) | Claude가 Vertex AI로 연결된 경우. `ANTHROPIC_API_KEY`를 설정하고 `GOOGLE_GENAI_USE_VERTEXAI`는 해제 |
 | 의도와 다른 공급자가 선택됨 | 키가 여러 개 설정됨. `ADK_PROVIDER=claude`처럼 직접 지정 ([모델 고르기](#모델-고르기-키가-여러-개일-때)) |
 
 **실행 중 (Step 5~6)**
@@ -352,6 +342,7 @@ adk web                              # 브라우저에서 http://localhost:8000 
 | 증상 | 원인과 해결 |
 |---|---|
 | `404 ... model not found` / `model_not_found` | 계정에서 쓸 수 없는 모델 이름. 각 공급자의 모델 목록에서 확인해 `ADK_MODEL`로 지정 |
+| `400 … Function tools with reasoning_effort are not supported … use /v1/responses` (OpenAI) | 이전 버전 코드에서 OpenAI를 예전 Chat Completions 방식으로 연결해서 생긴 오류. 최신 코드는 Responses API(`OpenAIResponsesLlm`)로 연결하므로 코드 파일을 최신으로 바꾸면 해결 |
 | `503 UNAVAILABLE` / `high demand` / `⏳ 모델 서버가 일시적으로 응답하지 못했습니다` | 코드 문제가 아니라 모델 서버의 일시적 과부하. Gemini는 자동으로 최대 6번(약 1분) 재시도하며, 그래도 실패하면 이 안내가 나옴. 1~2분 뒤 다시 실행하거나 `ADK_MODEL=gemini-3.5-flash-lite`처럼 가벼운 모델, 또는 `ADK_PROVIDER=claude`/`openai`로 다른 공급자 사용 |
 | `Context variable not found` 오류 (`code` 변수) | `{code}`, `{file_name}`이 세션 상태에 없음. `adk web` 대신 `python adk_parallel_code_review.py`로 실행 |
 | `429 Resource exhausted` | 세 리뷰어가 동시에 요청하므로 무료 등급 분당 한도에 걸릴 수 있음. 잠시 후 다시 실행하거나 더 가벼운 모델 사용 |

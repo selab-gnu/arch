@@ -20,7 +20,6 @@ API 키 (아래 중 하나만 있으면 자동으로 감지해 해당 모델을 
     export GOOGLE_API_KEY=...       # Gemini      — https://aistudio.google.com
     export ANTHROPIC_API_KEY=...    # Claude      — Claude Code에서 쓰는 Anthropic API 키 (pip install anthropic)
     export OPENAI_API_KEY=...       # OpenAI GPT  — Codex에서 쓰는 OpenAI API 키 (pip install openai)
-    # 또는 Vertex AI: export GOOGLE_GENAI_USE_VERTEXAI=TRUE GOOGLE_CLOUD_PROJECT=... GOOGLE_CLOUD_LOCATION=...
     키가 여러 개면 ADK_PROVIDER=gemini|claude|openai 로 고르고, 모델은 ADK_MODEL 로 직접 지정할 수 있습니다.
 
 실행: (자세한 사용법은 README.md 참고)
@@ -86,8 +85,9 @@ def _provider_of(model_name: str) -> str:
 def resolve_model():
     """ADK에 넘길 모델을 고릅니다. 반환값: (model, 설명 문자열)
 
-    - Gemini, OpenAI: 모델 이름 문자열만 넘기면 ADK가 알아서 연결합니다
-      (gpt-* 이름은 ADK의 OpenAI 연결로 처리되며 OPENAI_API_KEY를 사용).
+    - Gemini: 재시도 설정을 넣은 Gemini 객체로 연결합니다.
+    - OpenAI: OpenAIResponsesLlm(Responses API)로 연결하며 OPENAI_API_KEY를 사용합니다.
+      (문자열 'gpt-...'만 넘기면 Chat Completions 방식으로 연결되어, 추론 모델에서 도구 사용 시 400 오류)
     - Claude: 'claude-...' 문자열만 넘기면 ADK는 'Vertex AI의 Claude'로 연결해 Google Cloud 프로젝트를 요구합니다.
       Anthropic API 키(ANTHROPIC_API_KEY)로 직접 쓰려면 AnthropicLlm 객체로 감싸야 합니다.
     """
@@ -113,9 +113,12 @@ def resolve_model():
     if provider == "openai":
         try:
             import openai  # noqa: F401
+            from google.adk.integrations.openai import OpenAIResponsesLlm
         except ImportError:
             raise SystemExit("OpenAI 모델을 쓰려면 openai 패키지가 필요합니다:  pip install -U openai")
-        return name, f"OpenAI ({name}, OpenAI API 키)"
+        # Responses API(/v1/responses)로 연결합니다. gpt-5.x 같은 추론 모델은 예전 Chat Completions 방식에서
+        # 도구(function tools)를 함께 쓸 수 없어 400 오류가 납니다. OPENAI_API_KEY는 SDK가 자동으로 읽습니다.
+        return OpenAIResponsesLlm(model=name), f"OpenAI ({name}, OpenAI API 키)"
     if provider == "claude":
         return name, f"Claude ({name}, Vertex AI)"
     # Gemini는 일시적 오류(요청 폭주 503, 한도 429 등)에서 자동으로 재시도하도록 설정합니다.
