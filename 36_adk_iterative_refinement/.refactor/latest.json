@@ -1,6 +1,6 @@
 {
-  "score": 40.5,
-  "max_file_lines": 485,
+  "score": 49.6,
+  "max_file_lines": 415,
   "complex_count": 4,
   "max_cc": 22,
   "complex_top10": [
@@ -9,7 +9,7 @@
       "cc": 22
     },
     {
-      "name": "adk_iterative_refinement.py:resolve_model",
+      "name": "model_config.py:resolve_model",
       "cc": 14
     },
     {
@@ -23,8 +23,12 @@
   ],
   "files": {
     "adk_iterative_refinement.py": {
-      "lines": 485,
-      "mi": 40.5
+      "lines": 415,
+      "mi": 45.6
+    },
+    "model_config.py": {
+      "lines": 78,
+      "mi": 71.2
     }
   }
 }
