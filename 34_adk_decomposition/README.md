@@ -72,7 +72,12 @@ ADK 2.11에서 같은 시나리오로 두 방식을 실행해 본 결과:
 
 ```
 34_adk_decomposition/
-├── adk_hierarchical_report.py   # 이 예제
+├── adk_hierarchical_report.py   # 이 예제의 핵심: 3단계 계층(build_report_writer, AgentTool 연결) + 실행
+├── search_tools.py              # L3 WebSearchAgent의 오프라인 '가상 웹' 검색 (search_web)
+├── trace_callbacks.py           # 실행 과정을 들여쓴 트리로 출력하는 콜백 (LEVEL, on_agent_start …)
+├── model_config.py              # API 키에 맞춰 Gemini / Claude / OpenAI 모델 자동 선택 (resolve_model)
+├── error_messages.py            # 서버 과부하·요청 한도 같은 일시적 오류 안내 문구
+├── tests/                       # 동작 고정용 테스트 (pytest, 네트워크·API 키 불필요)
 ├── README.md
 ├── data/
 │   └── web_corpus.json          # 오프라인 검색용 '가상 웹' 문서 12건
@@ -312,14 +317,20 @@ ADK_MODEL=gemini-3.5-flash-lite python adk_hierarchical_report.py
 ```
 
 > **Claude를 Anthropic API 키로 쓸 때 주의**: ADK에 `model="claude-sonnet-5-5"`처럼 이름만 넘기면, ADK는 이것을 **Vertex AI(Google Cloud)의 Claude**로 연결해 Google Cloud 프로젝트를 요구합니다.
-> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(코드의 `resolve_model()` 참고).
+> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(`model_config.py`의 `resolve_model()` 참고).
 
 ## 웹 UI로 실행 (`adk web`)
 
 ```bash
 mkdir -p report_agent
-cp adk_hierarchical_report.py report_agent/agent.py
-cp -r data report_agent/data
+# 코드가 여러 파일로 나뉘어 있으므로 복사하지 않고, 예제 폴더의 root_agent를 불러오는 agent.py를 만듭니다.
+cat > report_agent/agent.py <<'EOF'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # 예제 폴더(34_adk_decomposition)
+from adk_hierarchical_report import root_agent  # noqa: E402,F401
+EOF
 echo "from . import agent" > report_agent/__init__.py
 echo "GOOGLE_API_KEY=발급받은_키" > report_agent/.env      # 또는 ANTHROPIC_API_KEY=... / OPENAI_API_KEY=...
 adk web                              # 브라우저에서 http://localhost:8000 → report_agent 선택
@@ -335,16 +346,16 @@ adk web                              # 브라우저에서 http://localhost:8000 
 |---|---|---|
 | 모델 공급자 | `export ADK_PROVIDER=gemini` / `claude` / `openai` | 설정된 키로 자동 감지 |
 | 사용 모델 | `export ADK_MODEL=gemini-3.5-flash-lite` (또는 `claude-opus-5-5`, `gpt-5.6-luna` …) | 공급자별 기본 모델 |
-| 공급자별 기본 모델 | 코드의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
+| 공급자별 기본 모델 | `model_config.py`의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
 | 검색 모드 | `--live` 또는 `export ADK_SEARCH_MODE=live` | 가상 웹 |
-| 기본 주제 | 코드의 `DEFAULT_TOPIC` | `2026년 AI 트렌드` |
+| 기본 주제 | `adk_hierarchical_report.py`의 `DEFAULT_TOPIC` | `2026년 AI 트렌드` |
 | 하위 주제 개수·보고서 형식 | `ReportWriter`의 instruction | 3~4개, 제목/요약/섹션/시사점/출처 |
-| 검색 결과 개수 | `search_web`의 `max_results` | 4 |
+| 검색 결과 개수 | `search_tools.py`의 `search_web` 안 `max_results` | 4 |
 
 ## 실습 과제 아이디어
 
 1. **sub_agents vs AgentTool 비교**: ResearchAssistant의 `tools=[AgentTool(...), AgentTool(...)]`를 블로그처럼 `sub_agents=[web_searcher, summarizer]`로 바꿔 실행하세요. 트리 로그에서 SummarizerAgent가 사라지는 것과 보고서 품질이 달라지는 것을 확인해 보세요.
-2. **계층 하나 더**: 섹션별로 사실 확인을 하는 `FactChecker`(Level 3)를 추가해 ResearchAssistant가 요약 후 검증까지 하도록 바꿔 보세요.
+2. **계층 하나 더**: 섹션별로 사실 확인을 하는 `FactChecker`(Level 3)를 추가해 ResearchAssistant가 요약 후 검증까지 하도록 바꿔 보세요. (트리 로그에 `[L3 FactChecker]`로 보이게 하려면 `trace_callbacks.py`의 `LEVEL`에도 `"FactChecker": 3`을 추가)
 3. **병렬화 결합**: 하위 주제 조사를 하나씩 순서대로 하지 말고, `ParallelAgent`로 동시에 조사한 뒤 ReportWriter가 종합하도록 바꿔 보세요 (Parallel Fan-Out과 결합).
 4. **컨텍스트 크기 관찰**: SummarizerAgent를 빼고 ResearchAssistant가 검색 원문을 그대로 반환하게 바꾼 뒤, 최상위 에이전트에 들어가는 텍스트 양이 얼마나 커지는지 비교해 보세요.
 
