@@ -1,0 +1,18 @@
+{
+  "score": 50.5,
+  "max_file_lines": 434,
+  "complex_count": 1,
+  "max_cc": 14,
+  "complex_top10": [
+    {
+      "name": "adk_sequential_pipeline.py:resolve_model",
+      "cc": 14
+    }
+  ],
+  "files": {
+    "adk_sequential_pipeline.py": {
+      "lines": 434,
+      "mi": 50.5
+    }
+  }
+}
