@@ -47,7 +47,6 @@ API 키 (아래 중 하나만 있으면 자동으로 감지해 해당 모델을 
 import asyncio
 import json
 import os
-import re
 import sqlite3
 import sys
 from pathlib import Path
@@ -57,7 +56,6 @@ from google.adk.agents import BaseAgent, LlmAgent, LoopAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event, EventActions
 from google.adk.runners import InMemoryRunner
-from google.adk.tools import ToolContext
 from google.genai import types
 
 # 실습 화면을 깔끔하게: ADK의 실험 기능·deprecated 경고와 내부 안내 로그는 숨깁니다 (오류는 그대로 표시).
@@ -122,62 +120,16 @@ def run_safe(coro):
         raise
 APP_NAME = "sql_generator_critic_app"
 BASE_DIR = Path(__file__).parent
-SCHEMA_PATH = BASE_DIR / "data" / "shop_schema.sql"
 QUESTIONS_PATH = BASE_DIR / "data" / "questions.json"
 MAX_ITERATIONS = int(os.environ.get("MAX_ITERATIONS", "5"))
 
 
 # ---------------------------------------------------------------------------
-# 데이터베이스 — 실행할 때마다 메모리에 새로 만들어 원본이 바뀌지 않게 합니다.
+# 쇼핑몰 DB와 SQL 도구 — DB 만들기, Critic의 validate_sql 도구, 채점 (sql_tools.py)
 # ---------------------------------------------------------------------------
-SCHEMA_SQL = SCHEMA_PATH.read_text(encoding="utf-8")
-
-
-def new_db() -> sqlite3.Connection:
-    con = sqlite3.connect(":memory:")
-    con.executescript(SCHEMA_SQL)
-    return con
-
-
-def schema_for_prompt() -> str:
-    """LLM에게 보여 줄 스키마: CREATE TABLE 문과 주석만 (INSERT 데이터는 숨김)."""
-    keep = [line for line in SCHEMA_SQL.splitlines() if not line.startswith("INSERT") and not line.startswith(" (")]
-    return "\n".join(keep).strip()
-
-
-def clean_sql(text: str) -> str:
-    """LLM 출력에서 ```sql 코드 블록 표시와 끝의 세미콜론을 제거합니다."""
-    m = re.search(r"```(?:sql)?\s*(.*?)```", text, re.S | re.I)
-    sql = (m.group(1) if m else text).strip()
-    return sql.rstrip(";").strip()
-
-
-# ---------------------------------------------------------------------------
-# Critic의 도구 — 초안 SQL을 실제로 실행해 봅니다.
-# ---------------------------------------------------------------------------
-def validate_sql(tool_context: ToolContext) -> dict:
-    """현재 초안 SQL(session.state의 draft)을 쇼핑몰 DB에서 실제로 실행해 검증합니다.
-
-    Returns:
-        ok(실행 성공 여부), error(오류 메시지), columns, row_count, preview(앞 5행).
-    """
-    sql = clean_sql(tool_context.state.get("draft", ""))
-    if not sql:
-        return {"ok": False, "error": "초안 SQL이 비어 있습니다."}
-    if ";" in sql:
-        return {"ok": False, "error": "SQL 문은 하나만 작성해야 합니다 (세미콜론으로 여러 문장 금지)."}
-    if not re.match(r"^\s*(SELECT|WITH)\b", sql, re.I):
-        return {"ok": False, "error": "조회(SELECT/WITH) 문만 허용됩니다. INSERT/UPDATE/DELETE/DDL은 안 됩니다."}
-    con = new_db()
-    try:
-        cur = con.execute(sql)
-        rows = cur.fetchall()
-        columns = [d[0] for d in cur.description or []]
-    except sqlite3.Error as e:
-        return {"ok": False, "error": f"{type(e).__name__}: {e}", "sql": sql}
-    finally:
-        con.close()
-    return {"ok": True, "sql": sql, "columns": columns, "row_count": len(rows), "preview": rows[:5]}
+from sql_tools import (  # noqa: F401  (기존 import 호환)
+    SCHEMA_PATH, SCHEMA_SQL, new_db, schema_for_prompt, clean_sql, validate_sql, run_sql, same_result,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -291,28 +243,6 @@ async def solve(question: str) -> dict:
     if not passed:
         print(f"  ⚠️  max_iterations({MAX_ITERATIONS})에 도달해 PASS 없이 종료")
     return {"sql": clean_sql(state.get("draft", "")), "passed": passed, "iterations": iteration}
-
-
-def run_sql(sql: str) -> tuple[list[str], list[tuple]]:
-    con = new_db()
-    try:
-        cur = con.execute(sql)
-        return [d[0] for d in cur.description or []], cur.fetchall()
-    finally:
-        con.close()
-
-
-def same_result(sql: str, expected_sql: str) -> bool:
-    """컬럼 이름·순서와 관계없이 결과 값이 같은지 비교 (ORDER BY가 있으면 행 순서도 비교)."""
-    try:
-        _, got = run_sql(sql)
-        _, exp = run_sql(expected_sql)
-    except sqlite3.Error:
-        return False
-    norm = lambda rows: [tuple(sorted(map(str, r))) for r in rows]
-    if "order by" in expected_sql.lower():
-        return norm(got) == norm(exp)
-    return sorted(norm(got)) == sorted(norm(exp))
 
 
 def show(q: dict | None, question: str) -> dict:
