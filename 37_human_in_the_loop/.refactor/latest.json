@@ -1,0 +1,22 @@
+{
+  "score": 41.2,
+  "max_file_lines": 492,
+  "complex_count": 2,
+  "max_cc": 22,
+  "complex_top10": [
+    {
+      "name": "adk_human_in_the_loop.py:handle_request",
+      "cc": 22
+    },
+    {
+      "name": "adk_human_in_the_loop.py:resolve_model",
+      "cc": 14
+    }
+  ],
+  "files": {
+    "adk_human_in_the_loop.py": {
+      "lines": 492,
+      "mi": 41.2
+    }
+  }
+}
