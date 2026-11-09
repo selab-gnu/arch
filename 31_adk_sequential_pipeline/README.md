@@ -50,7 +50,12 @@ PDF 한 개를 받아 세 에이전트가 정해진 순서대로 **파싱 → �
 
 ```
 31_adk_sequential_pipeline/
-├── adk_sequential_pipeline.py   # 이 예제 (ADK Sequential Pipeline)
+├── adk_sequential_pipeline.py   # 이 예제의 핵심: 세 에이전트 + SequentialAgent 조립 라인 + 실행(main)
+├── pdf_tools.py                 # 에이전트가 쓰는 도구: pdf_parser / regex_extractor / summary_engine
+├── model_config.py              # API 키에 맞춰 Gemini / Claude / OpenAI 모델 자동 선택 (resolve_model)
+├── pdf_inputs.py                # 명령행 인자 → 처리할 PDF 목록, 샘플 PDF 생성
+├── error_messages.py            # 서버 과부하·요청 한도 같은 일시적 오류 안내 문구
+├── tests/                       # 동작 고정용 테스트 (pytest, 네트워크·API 키 불필요)
 ├── README.md
 └── data/                        # 실습용 샘플 PDF
     ├── invoice_en.pdf           # 영문 클라우드 서비스 인보이스 (1쪽)
@@ -250,7 +255,7 @@ ADK_MODEL=gemini-3.5-flash-lite python adk_sequential_pipeline.py
 ```
 
 > **Claude를 Anthropic API 키로 쓸 때 주의**: ADK에 `model="claude-sonnet-5-5"`처럼 이름만 넘기면, ADK는 이것을 **Vertex AI(Google Cloud)의 Claude**로 연결해 Google Cloud 프로젝트를 요구합니다.
-> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(코드의 `resolve_model()` 참고). 직접 코드를 짤 때도 이 점을 기억하세요.
+> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(`model_config.py`의 `resolve_model()` 참고). 직접 코드를 짤 때도 이 점을 기억하세요.
 
 ## 웹 UI로 실행 (`adk web`)
 
@@ -258,7 +263,14 @@ ADK 개발 UI에서 이벤트·상태 변화를 눈으로 확인하려면 에이
 
 ```bash
 mkdir -p pdf_pipeline
-cp adk_sequential_pipeline.py pdf_pipeline/agent.py
+# 코드가 여러 파일로 나뉘어 있으므로 복사하지 않고, 예제 폴더의 root_agent를 불러오는 agent.py를 만듭니다.
+cat > pdf_pipeline/agent.py <<'EOF'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # 예제 폴더(31_adk_sequential_pipeline)
+from adk_sequential_pipeline import root_agent  # noqa: E402,F401
+EOF
 echo "from . import agent" > pdf_pipeline/__init__.py
 echo "GOOGLE_API_KEY=발급받은_키" > pdf_pipeline/.env      # 또는 ANTHROPIC_API_KEY=... / OPENAI_API_KEY=...
 adk web                              # 브라우저에서 http://localhost:8000 → pdf_pipeline 선택
@@ -274,9 +286,9 @@ adk web                              # 브라우저에서 http://localhost:8000 
 |---|---|---|
 | 모델 공급자 | `export ADK_PROVIDER=gemini` / `claude` / `openai` | 설정된 키로 자동 감지 |
 | 사용 모델 | `export ADK_MODEL=gemini-3.5-flash-lite` (또는 `claude-opus-5-5`, `gpt-5.6-luna` …) | 공급자별 기본 모델 |
-| 공급자별 기본 모델 | 코드의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
-| LLM에 넘길 PDF 텍스트 최대 길이 | 코드의 `MAX_CHARS` | 20,000자 |
-| 추출할 항목 | 코드의 `_PATTERNS` 딕셔너리에 정규식 추가 | 이메일·URL·날짜·금액·전화·퍼센트 |
+| 공급자별 기본 모델 | `model_config.py`의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
+| LLM에 넘길 PDF 텍스트 최대 길이 | `pdf_tools.py`의 `MAX_CHARS` | 20,000자 |
+| 추출할 항목 | `pdf_tools.py`의 `_PATTERNS` 딕셔너리에 정규식 추가 | 이메일·URL·날짜·금액·전화·퍼센트 |
 
 ## 샘플 데이터 수정·추가하기
 
