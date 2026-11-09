@@ -1,0 +1,22 @@
+{
+  "score": 48.3,
+  "max_file_lines": 426,
+  "complex_count": 2,
+  "max_cc": 14,
+  "complex_top10": [
+    {
+      "name": "adk_coordinator_dispatcher.py:resolve_model",
+      "cc": 14
+    },
+    {
+      "name": "adk_coordinator_dispatcher.py:ask",
+      "cc": 11
+    }
+  ],
+  "files": {
+    "adk_coordinator_dispatcher.py": {
+      "lines": 426,
+      "mi": 48.3
+    }
+  }
+}
