@@ -1,6 +1,6 @@
 {
-  "score": 65.9,
-  "max_file_lines": 243,
+  "score": 68.5,
+  "max_file_lines": 221,
   "complex_count": 2,
   "max_cc": 14,
   "complex_top10": [
@@ -15,8 +15,12 @@
   ],
   "files": {
     "adk_coordinator_dispatcher.py": {
-      "lines": 243,
-      "mi": 62.3
+      "lines": 221,
+      "mi": 66.4
+    },
+    "error_messages.py": {
+      "lines": 27,
+      "mi": 73.4
     },
     "model_config.py": {
       "lines": 78,
