@@ -1,6 +1,6 @@
 {
-  "score": 50.0,
-  "max_file_lines": 384,
+  "score": 53.3,
+  "max_file_lines": 363,
   "complex_count": 3,
   "max_cc": 19,
   "complex_top10": [
@@ -19,8 +19,12 @@
   ],
   "files": {
     "adk_generator_critic.py": {
-      "lines": 384,
-      "mi": 45.7
+      "lines": 363,
+      "mi": 48.0
+    },
+    "error_messages.py": {
+      "lines": 27,
+      "mi": 73.4
     },
     "model_config.py": {
       "lines": 78,
