@@ -71,7 +71,11 @@ workflow = SequentialAgent([Generator, RefinementLoop])
 
 ```
 36_adk_iterative_refinement/
-├── adk_iterative_refinement.py   # 이 예제
+├── adk_iterative_refinement.py   # 이 예제의 핵심: Generator + (Critic → QualityGate → Refiner) 루프 + 실행
+├── benchmark_tools.py            # 후보 코드를 별도 프로세스에서 실행·측정 (benchmark, Critic 도구 benchmark_current_draft)
+├── model_config.py               # API 키에 맞춰 Gemini / Claude / OpenAI 모델 자동 선택 (resolve_model)
+├── error_messages.py             # 서버 과부하·요청 한도 같은 일시적 오류 안내 문구
+├── tests/                        # 동작 고정용 테스트 (pytest, 네트워크·API 키 불필요)
 ├── README.md
 ├── data/
 │   └── tasks.json                # 최적화 과제 3개 (설명, 정확성 테스트, 성능 측정 입력, 목표 시간)
@@ -305,14 +309,20 @@ ADK_MODEL=gemini-3.5-flash-lite python adk_iterative_refinement.py 2
 ```
 
 > **Claude를 Anthropic API 키로 쓸 때 주의**: ADK에 `model="claude-sonnet-5-5"`처럼 이름만 넘기면, ADK는 이것을 **Vertex AI(Google Cloud)의 Claude**로 연결해 Google Cloud 프로젝트를 요구합니다.
-> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(코드의 `resolve_model()` 참고).
+> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(`model_config.py`의 `resolve_model()` 참고).
 
 ## 웹 UI로 실행 (`adk web`)
 
 ```bash
 mkdir -p refine_agent
-cp adk_iterative_refinement.py refine_agent/agent.py
-cp -r data refine_agent/data
+# 코드가 여러 파일로 나뉘어 있으므로 복사하지 않고, 예제 폴더의 root_agent를 불러오는 agent.py를 만듭니다.
+cat > refine_agent/agent.py <<'EOF'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # 예제 폴더(36_adk_iterative_refinement)
+from adk_iterative_refinement import root_agent  # noqa: E402,F401
+EOF
 echo "from . import agent" > refine_agent/__init__.py
 echo "GOOGLE_API_KEY=발급받은_키" > refine_agent/.env      # 또는 ANTHROPIC_API_KEY=... / OPENAI_API_KEY=...
 adk web                              # 브라우저에서 http://localhost:8000 → refine_agent 선택
@@ -325,9 +335,9 @@ adk web                              # 브라우저에서 http://localhost:8000 
 
 ## 안전에 관한 주의
 
-이 예제는 **LLM이 작성한 코드를 실제로 실행**합니다. 벤치마크는 다음 조건으로 실행됩니다.
+이 예제는 **LLM이 작성한 코드를 실제로 실행**합니다. 벤치마크(`benchmark_tools.py`)는 다음 조건으로 실행됩니다.
 
-- 별도 프로세스에서 실행합니다(`python -I`: 사용자 환경 변수와 site-packages 영향 차단).
+- 별도 프로세스에서 실행합니다(`python -I -X utf8`: 사용자 환경 변수와 site-packages 영향 차단, 결과는 항상 UTF-8로 주고받음).
 - 임시 폴더에서 실행합니다.
 - `BENCH_TIMEOUT`(기본 10초)이 지나면 강제로 종료합니다.
 
@@ -339,7 +349,7 @@ adk web                              # 브라우저에서 http://localhost:8000 
 |---|---|---|
 | 모델 공급자 | `export ADK_PROVIDER=gemini` / `claude` / `openai` | 설정된 키로 자동 감지 |
 | 사용 모델 | `export ADK_MODEL=gemini-3.5-flash-lite` (또는 `claude-opus-5-5`, `gpt-5.6-luna` …) | 공급자별 기본 모델 |
-| 공급자별 기본 모델 | 코드의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
+| 공급자별 기본 모델 | `model_config.py`의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
 | 최대 반복 횟수 | `MAX_ITERATIONS=5 python ...` | 3 |
 | 조기 종료 | `ENABLE_QUALITY_GATE=0` 으로 끄기 | 켜짐 |
 | 벤치마크 시간 제한 | `BENCH_TIMEOUT=20 python ...` (초) | 10 |
@@ -349,7 +359,7 @@ adk web                              # 브라우저에서 http://localhost:8000 
 
 1. **조기 종료 효과 비교**: `ENABLE_QUALITY_GATE=1`과 `0`으로 같은 과제를 실행해 모델 호출 수(반복 횟수)와 최종 결과를 비교해 보세요.
 2. **Critic 없이 다듬기**: Critic에서 벤치마크 도구를 빼고 "눈으로만" 검토하게 하면 개선 방향이 얼마나 정확한지 비교해 보세요. 측정 근거의 중요성을 확인할 수 있습니다.
-3. **최고 버전 보존**: 덮어쓰기로 좋은 버전을 잃는 문제를 해결해 보세요. 예를 들어 벤치마크 도구가 측정할 때마다 가장 빠른 정답 코드를 `state["best_draft"]`에 따로 저장하고, 마지막에 그것을 결과로 쓰게 바꿀 수 있습니다.
+3. **최고 버전 보존**: 덮어쓰기로 좋은 버전을 잃는 문제를 해결해 보세요. 예를 들어 벤치마크 도구(`benchmark_tools.py`의 `benchmark_current_draft`)가 측정할 때마다 가장 빠른 정답 코드를 `state["best_draft"]`에 따로 저장하고, 마지막에 그것을 결과로 쓰게 바꿀 수 있습니다.
 4. **다른 품질 기준**: 실행 시간 대신 메모리 사용량(`tracemalloc`)이나 코드 가독성을 기준으로 다듬도록 Critic과 QualityGate를 바꿔 보세요.
 
 ## 문제 해결
@@ -381,4 +391,5 @@ adk web                              # 브라우저에서 http://localhost:8000 
 | 반복 1에서 바로 끝남 | 모델이 첫 초안부터 효율적인 코드를 씀. 정상입니다. 개선 과정을 보고 싶으면 `ENABLE_QUALITY_GATE=0`으로 실행 |
 | 측정마다 `시간 초과` | 아직 지수/이차 시간 풀이. Critic 제안대로 개선되는지 지켜보거나 `MAX_ITERATIONS`를 늘리기 |
 | 한 번 실행에 오래 걸림 | 느린 초안은 측정에 최대 `BENCH_TIMEOUT`초가 걸림. 반복마다 모델 호출도 3회 이상 일어남 |
+| (Windows) 측정 중 `AttributeError: 'NoneType' object has no attribute 'strip'`으로 멈춤 | 이전 버전 코드에서 `PYTHONUTF8=1`일 때 측정 결과의 한국어 메시지를 읽지 못하던 문제. 최신 코드(`benchmark_tools.py`)는 `-X utf8`로 고쳐져 있으므로 코드 파일을 최신으로 바꾸면 해결 |
 | `429 Resource exhausted` | 무료 등급 분당 한도. 잠시 후 다시 실행하거나 `MAX_ITERATIONS`를 줄이기 |
