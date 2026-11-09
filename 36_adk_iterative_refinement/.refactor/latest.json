@@ -1,0 +1,30 @@
+{
+  "score": 40.5,
+  "max_file_lines": 485,
+  "complex_count": 4,
+  "max_cc": 22,
+  "complex_top10": [
+    {
+      "name": "adk_iterative_refinement.py:optimize",
+      "cc": 22
+    },
+    {
+      "name": "adk_iterative_refinement.py:resolve_model",
+      "cc": 14
+    },
+    {
+      "name": "adk_iterative_refinement.py:report",
+      "cc": 13
+    },
+    {
+      "name": "adk_iterative_refinement.py:main",
+      "cc": 11
+    }
+  ],
+  "files": {
+    "adk_iterative_refinement.py": {
+      "lines": 485,
+      "mi": 40.5
+    }
+  }
+}
