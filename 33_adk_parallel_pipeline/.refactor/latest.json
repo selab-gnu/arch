@@ -1,6 +1,6 @@
 {
-  "score": 43.6,
-  "max_file_lines": 468,
+  "score": 46.9,
+  "max_file_lines": 447,
   "complex_count": 2,
   "max_cc": 49,
   "complex_top10": [
@@ -15,8 +15,12 @@
   ],
   "files": {
     "adk_parallel_code_review.py": {
-      "lines": 468,
-      "mi": 39.0
+      "lines": 447,
+      "mi": 41.0
+    },
+    "error_messages.py": {
+      "lines": 27,
+      "mi": 73.4
     },
     "model_config.py": {
       "lines": 78,
