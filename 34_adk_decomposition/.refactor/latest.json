@@ -1,6 +1,6 @@
 {
-  "score": 65.9,
-  "max_file_lines": 274,
+  "score": 69.4,
+  "max_file_lines": 255,
   "complex_count": 2,
   "max_cc": 14,
   "complex_top10": [
@@ -15,8 +15,8 @@
   ],
   "files": {
     "adk_hierarchical_report.py": {
-      "lines": 274,
-      "mi": 61.4
+      "lines": 255,
+      "mi": 64.2
     },
     "error_messages.py": {
       "lines": 27,
@@ -29,6 +29,10 @@
     "search_tools.py": {
       "lines": 40,
       "mi": 81.6
+    },
+    "trace_callbacks.py": {
+      "lines": 32,
+      "mi": 88.1
     }
   }
 }

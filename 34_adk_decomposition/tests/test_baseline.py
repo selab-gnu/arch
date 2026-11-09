@@ -268,3 +268,34 @@ def test_run_safe_errors(no_keys, fresh_ready, monkeypatch, msg, expected):
     with pytest.raises(SystemExit) as exc:
         m.run_safe(_boom(msg))
     assert str(exc.value).startswith(expected)
+
+
+# --- 실행 시작 시각(_T0) 공유 — 4단계(trace_callbacks.py 분리)에서 추가 -------------------
+def test_write_report_resets_shared_start_time(monkeypatch, capsys):
+    import asyncio
+    import trace_callbacks
+
+    assert m._T0 is trace_callbacks._T0  # 두 파일이 같은 리스트를 가리킴
+
+    class FakeSessionService:
+        async def create_session(self, **kw):
+            return SimpleNamespace(id="s1")
+
+    class FakeRunner:  # 모델을 부르지 않는 가짜 러너: 이벤트 없이 바로 끝남
+        def __init__(self, **kw):
+            self.session_service = FakeSessionService()
+
+        async def run_async(self, **kw):
+            trace_callbacks.on_agent_start(SimpleNamespace(agent_name="ReportWriter"))
+            return
+            yield
+
+    saved = m._T0[0]
+    try:
+        m._T0[0] = time.perf_counter() - 1000  # 아주 오래전 시각으로 만들어 둠
+        monkeypatch.setattr(m, "InMemoryRunner", FakeRunner)
+        assert asyncio.run(m.write_report("주제", live=False)) == ""
+    finally:
+        m._T0[0] = saved
+    # write_report가 시작 시각을 '지금'으로 다시 맞췄다면 콜백 출력은 0초 근처여야 함
+    assert capsys.readouterr().out.startswith("   0.0s  [L1 ReportWriter] 시작")
