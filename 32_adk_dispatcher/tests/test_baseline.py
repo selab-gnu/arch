@@ -203,3 +203,40 @@ def test_run_safe_other_errors_propagate(no_keys, fresh_ready, monkeypatch):
     monkeypatch.setenv("GOOGLE_API_KEY", "x")
     with pytest.raises(RuntimeError):
         m.run_safe(_boom("something else"))
+
+
+# --- 데모 시나리오 선택 (--demo [번호...]) -----------------------------------------
+@pytest.mark.parametrize("argv,expected", [
+    (["x.py", "--demo"], [3]),
+    (["x.py", "--demo", "1"], [1]),
+    (["x.py", "--demo", "2", "4"], [2, 4]),
+    (["x.py", "--demo", "ALL"], [1, 2, 3, 4]),
+])
+def test_parse_demo_args(argv, expected):
+    assert m.parse_demo_args(argv, 4) == expected
+
+
+@pytest.mark.parametrize("bad", ["0", "5", "abc"])
+def test_parse_demo_args_invalid(bad):
+    with pytest.raises(SystemExit) as exc:
+        m.parse_demo_args(["x.py", "--demo", bad], 4)
+    assert "1~4" in str(exc.value)
+
+
+@pytest.mark.parametrize("numbers,titles", [
+    (None, ["3."]),
+    ([1], ["1."]),
+    ([2, 4], ["2.", "4."]),
+])
+def test_run_demo_runs_only_selected(monkeypatch, capsys, numbers, titles):
+    asked = []
+
+    async def fake_ask(runner, session_id, text):  # 모델을 부르지 않고 질문만 기록
+        asked.append(text)
+
+    monkeypatch.setattr(m, "ask", fake_ask)
+    asyncio.run(m.run_demo(numbers))
+    shown = re.findall(r"▶ 시나리오: (\d\.)", capsys.readouterr().out)
+    assert shown == titles
+    scenarios = m._load("demo_scenarios.json")["scenarios"]
+    assert asked == [t for n in titles for t in scenarios[int(n[0]) - 1]["turns"]]

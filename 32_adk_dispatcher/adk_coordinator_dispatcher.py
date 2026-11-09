@@ -30,7 +30,8 @@ API 키 (아래 중 하나만 있으면 자동으로 감지해 해당 모델을 
 
 실행: (자세한 사용법은 README.md 참고)
     python adk_coordinator_dispatcher.py           # 대화형 상담 (종료: quit)
-    python adk_coordinator_dispatcher.py --demo    # data/demo_scenarios.json 의 시나리오 자동 실행
+    python adk_coordinator_dispatcher.py --demo    # 시나리오 3번(주제 전환)만 자동 실행
+    python adk_coordinator_dispatcher.py --demo 1  # 시나리오 1번 실행 (--demo 1 4 처럼 여러 개, --demo all 은 전체)
 
 모델 지정 예) export ADK_MODEL=gemini-3.5-flash-lite / claude-opus-5-5 / gpt-5.6-luna
 """
@@ -187,10 +188,31 @@ async def ask(runner: InMemoryRunner, session_id: str, text: str) -> None:
                 print(f"\n🤖 {event.author}:\n{text_out}\n")
 
 
-async def run_demo() -> None:
+DEFAULT_DEMO = [3]  # `--demo` 뒤에 번호가 없을 때 실행할 시나리오 (3. 주제 전환 — 재라우팅이 가장 잘 보임)
+
+
+def parse_demo_args(argv: list[str], total: int) -> list[int]:
+    """`--demo` 뒤의 시나리오 번호를 읽습니다.
+
+    --demo → DEFAULT_DEMO / --demo 1 → [1] / --demo 1 4 → [1, 4] / --demo all → 전체
+    """
+    picks = [a for a in argv[argv.index("--demo") + 1:] if not a.startswith("-")]
+    if not picks:
+        return list(DEFAULT_DEMO)
+    if [p.lower() for p in picks] == ["all"]:
+        return list(range(1, total + 1))
+    nums = [int(p) for p in picks if p.isdigit()]
+    if len(nums) != len(picks) or not all(1 <= n <= total for n in nums):
+        raise SystemExit(f"시나리오 번호는 1~{total} 사이로 적어 주세요.  예) --demo 1   /   --demo 1 4   /   --demo all")
+    return nums
+
+
+async def run_demo(numbers: list[int] | None = None) -> None:
+    """data/demo_scenarios.json 의 시나리오 중 numbers(1부터 시작)에 해당하는 것만 실행합니다."""
     scenarios = _load("demo_scenarios.json")["scenarios"]
+    selected = [scenarios[n - 1] for n in (numbers or DEFAULT_DEMO)]
     runner = InMemoryRunner(agent=coordinator, app_name=APP_NAME)
-    for sc in scenarios:
+    for sc in selected:
         print(f"\n{'=' * 70}\n▶ 시나리오: {sc['title']}\n  ({sc['expect']})\n{'=' * 70}")
         session = await runner.session_service.create_session(app_name=APP_NAME, user_id="user")
         for turn in sc["turns"]:
@@ -218,4 +240,9 @@ async def run_chat() -> None:
 
 
 if __name__ == "__main__":
-    run_safe(run_demo() if "--demo" in sys.argv else run_chat())
+    if "--demo" in sys.argv:
+        # 번호를 먼저 확인해서, 잘못 적었으면 모델을 부르기 전에 안내합니다.
+        demo_numbers = parse_demo_args(sys.argv, len(_load("demo_scenarios.json")["scenarios"]))
+        run_safe(run_demo(demo_numbers))
+    else:
+        run_safe(run_chat())

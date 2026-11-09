@@ -59,7 +59,7 @@ Google ADK(Agent Development Kit)로 구현한 **Coordinator/Dispatcher(컨시�
 └── data/
     ├── billing_db.json             # 가상의 청구 시스템: 고객 3명, 청구서 4건, 환불 정책
     ├── diagnostics_kb.json         # 가상의 진단 자료: 서비스 상태 5종, 오류 코드 5종, 알려진 이슈 2건
-    └── demo_scenarios.json         # --demo 로 자동 실행할 상담 시나리오 4개
+    └── demo_scenarios.json         # --demo [번호] 로 자동 실행할 상담 시나리오 4개
 ```
 
 데이터는 모두 가상의 클라우드 서비스 "Acme Cloud" 기준입니다. 상담 실습에 쓸 만한 상황을 일부러 넣어 두었습니다.
@@ -194,10 +194,15 @@ python adk_coordinator_dispatcher.py          # 대화형 상담 (종료: quit)
 #### 1) 데모 시나리오 자동 실행
 
 ```bash
-python adk_coordinator_dispatcher.py --demo
+python adk_coordinator_dispatcher.py --demo          # 시나리오 3번만 실행 (기본)
+python adk_coordinator_dispatcher.py --demo 1        # 시나리오 1번만 실행
+python adk_coordinator_dispatcher.py --demo 2 4      # 시나리오 2번, 4번 실행
+python adk_coordinator_dispatcher.py --demo all      # 시나리오 4개 모두 실행
 ```
 
-`data/demo_scenarios.json`의 시나리오 4개를 차례로 실행합니다(시나리오마다 새 세션).
+`--demo`만 쓰면 재라우팅(되돌려 보내기)이 가장 잘 보이는 **시나리오 3번만** 실행합니다.
+다른 시나리오는 `--demo` 뒤에 번호를 붙이세요. 시나리오마다 새 세션에서 시작합니다.
+기본 번호는 코드의 `DEFAULT_DEMO`에서 바꿀 수 있습니다.
 
 | 시나리오 | 기대하는 흐름 |
 |---|---|
@@ -315,6 +320,7 @@ adk web                              # 브라우저에서 http://localhost:8000 
 | 고객·청구서 데이터 | `data/billing_db.json` 수정 | 고객 3명, 청구서 4건 |
 | 오류 코드·장애 정보 | `data/diagnostics_kb.json` 수정 | 오류 코드 5종 |
 | 데모 시나리오 | `data/demo_scenarios.json`의 `turns`에 질문 추가 | 시나리오 4개 |
+| `--demo`만 쓸 때 실행할 시나리오 | `adk_coordinator_dispatcher.py`의 `DEFAULT_DEMO` | `[3]` |
 
 > `request_refund`(`support_tools.py`)는 접수 내역을 **세션 상태(`session.state["refund_tickets"]`)에만** 기록하며 JSON 파일은 바꾸지 않습니다.
 > 그래서 프로그램을 다시 실행하면 데이터가 항상 처음 상태로 돌아갑니다.

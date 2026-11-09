@@ -3,7 +3,8 @@
 API 키가 설정된 PowerShell에서, 이 폴더로 이동한 뒤 실행하세요.
 
 ```
-$env:PYTHONUTF8=1; .venv\Scripts\python adk_coordinator_dispatcher.py --demo
+$env:PYTHONUTF8=1; .venv\Scripts\python adk_coordinator_dispatcher.py --demo       # 시나리오 3번만
+$env:PYTHONUTF8=1; .venv\Scripts\python adk_coordinator_dispatcher.py --demo all   # 아래 2~5번까지 모두 보려면
 ```
 
 1. 맨 위에 `🧠 사용 모델: ...` 이 나오는가?
