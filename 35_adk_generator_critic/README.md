@@ -62,7 +62,11 @@ ValidationLoop (LoopAgent, max_iterations=5)
 
 ```
 35_adk_generator_critic/
-├── adk_generator_critic.py   # 이 예제
+├── adk_generator_critic.py   # 이 예제의 핵심: Generator + Critic + ExitConditionChecker + LoopAgent + 실행
+├── sql_tools.py              # 쇼핑몰 DB(메모리), Critic의 validate_sql 도구, 정답 채점(run_sql, same_result)
+├── model_config.py           # API 키에 맞춰 Gemini / Claude / OpenAI 모델 자동 선택 (resolve_model)
+├── error_messages.py         # 서버 과부하·요청 한도 같은 일시적 오류 안내 문구
+├── tests/                    # 동작 고정용 테스트 (pytest, 네트워크·API 키 불필요)
 ├── README.md
 └── data/
     ├── shop_schema.sql       # 가상 온라인 쇼핑몰 DB (테이블 4개 + 샘플 데이터)
@@ -317,14 +321,20 @@ ADK_MODEL=gemini-3.5-flash-lite python adk_generator_critic.py 4
 ```
 
 > **Claude를 Anthropic API 키로 쓸 때 주의**: ADK에 `model="claude-sonnet-5-5"`처럼 이름만 넘기면, ADK는 이것을 **Vertex AI(Google Cloud)의 Claude**로 연결해 Google Cloud 프로젝트를 요구합니다.
-> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(코드의 `resolve_model()` 참고).
+> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(`model_config.py`의 `resolve_model()` 참고).
 
 ## 웹 UI로 실행 (`adk web`)
 
 ```bash
 mkdir -p sql_loop
-cp adk_generator_critic.py sql_loop/agent.py
-cp -r data sql_loop/data
+# 코드가 여러 파일로 나뉘어 있으므로 복사하지 않고, 예제 폴더의 root_agent를 불러오는 agent.py를 만듭니다.
+cat > sql_loop/agent.py <<'EOF'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # 예제 폴더(35_adk_generator_critic)
+from adk_generator_critic import root_agent  # noqa: E402,F401
+EOF
 echo "from . import agent" > sql_loop/__init__.py
 echo "GOOGLE_API_KEY=발급받은_키" > sql_loop/.env      # 또는 ANTHROPIC_API_KEY=... / OPENAI_API_KEY=...
 adk web                              # 브라우저에서 http://localhost:8000 → sql_loop 선택
@@ -341,15 +351,17 @@ adk web                              # 브라우저에서 http://localhost:8000 
 |---|---|---|
 | 모델 공급자 | `export ADK_PROVIDER=gemini` / `claude` / `openai` | 설정된 키로 자동 감지 |
 | 사용 모델 | `export ADK_MODEL=gemini-3.5-flash-lite` (또는 `claude-opus-5-5`, `gpt-5.6-luna` …) | 공급자별 기본 모델 |
-| 공급자별 기본 모델 | 코드의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
+| 공급자별 기본 모델 | `model_config.py`의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
 | 최대 반복 횟수 | `MAX_ITERATIONS=3 python ...` | 5 |
 | DB 스키마·데이터 | `data/shop_schema.sql` 수정 | 테이블 4개 |
 | 문제 추가 | `data/questions.json`에 `id`, `level`, `question`, `expected_sql` 추가 | 8문제 |
-| 종료 조건 | `ExitConditionChecker`의 `condition_key`, `exit_condition` | `feedback` / `PASS` |
+| 종료 조건 | `adk_generator_critic.py`의 `ExitConditionChecker(condition_key=..., exit_condition=...)` | `feedback` / `PASS` |
+| SQL 검증 규칙 (SELECT/WITH만, 한 문장만) | `sql_tools.py`의 `validate_sql` | — |
+| 정답 비교 방식 | `sql_tools.py`의 `same_result` | 컬럼 순서 무시, ORDER BY 있으면 행 순서 비교 |
 
 ## 실습 과제 아이디어
 
-1. **종료 조건 실험**: `ExitConditionChecker`를 빼고 실행하면 PASS가 나와도 `max_iterations`까지 계속 도는 것을 확인해 보세요. 반대로 Critic에게 ADK 내장 `exit_loop` 도구를 주어 LLM이 스스로 루프를 끝내게 바꾸고, 두 방식의 장단점을 비교해 보세요.
+1. **종료 조건 실험**: `ExitConditionChecker`를 빼고 실행하면 PASS가 나와도 `max_iterations`까지 계속 도는 것을 확인해 보세요. 반대로 Critic에게 ADK 내장 `exit_loop` 도구를 주어(Critic의 `tools=[validate_sql, exit_loop]`) LLM이 스스로 루프를 끝내게 바꾸고, 두 방식의 장단점을 비교해 보세요.
 2. **더 엄격한 Critic**: Critic이 "Critic PASS·정답 불일치" 문제를 잡도록 바꿔 보세요. 예를 들어 질문의 조건(제외 조건, 정렬, 개수 제한)을 체크리스트로 하나씩 확인하게 하거나, 결과 행 수가 상식적인지 따져 보게 할 수 있습니다.
 3. **반복 횟수 통계**: `all`을 여러 모델(`ADK_MODEL`)로 실행해 정답률과 평균 반복 횟수를 표로 비교해 보세요.
 4. **Iterative Refinement로 확장**: PASS한 SQL을 한 번 더 받아 "인덱스를 고려한 더 효율적인 쿼리"로 다듬는 Refiner 루프를 뒤에 붙여 보세요.
