@@ -1,0 +1,22 @@
+{
+  "score": 48.6,
+  "max_file_lines": 396,
+  "complex_count": 2,
+  "max_cc": 14,
+  "complex_top10": [
+    {
+      "name": "adk_hierarchical_report.py:resolve_model",
+      "cc": 14
+    },
+    {
+      "name": "adk_hierarchical_report.py:main",
+      "cc": 11
+    }
+  ],
+  "files": {
+    "adk_hierarchical_report.py": {
+      "lines": 396,
+      "mi": 48.6
+    }
+  }
+}
