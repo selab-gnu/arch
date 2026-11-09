@@ -1,6 +1,6 @@
 {
-  "score": 67.9,
-  "max_file_lines": 271,
+  "score": 71.0,
+  "max_file_lines": 227,
   "complex_count": 1,
   "max_cc": 14,
   "complex_top10": [
@@ -11,12 +11,16 @@
   ],
   "files": {
     "adk_sequential_pipeline.py": {
-      "lines": 271,
-      "mi": 62.6
+      "lines": 227,
+      "mi": 67.4
     },
     "model_config.py": {
       "lines": 79,
       "mi": 71.2
+    },
+    "pdf_inputs.py": {
+      "lines": 49,
+      "mi": 69.7
     },
     "pdf_tools.py": {
       "lines": 103,
