@@ -1,0 +1,22 @@
+{
+  "score": 34.4,
+  "max_file_lines": 539,
+  "complex_count": 2,
+  "max_cc": 49,
+  "complex_top10": [
+    {
+      "name": "adk_parallel_code_review.py:analyze_complexity",
+      "cc": 49
+    },
+    {
+      "name": "adk_parallel_code_review.py:resolve_model",
+      "cc": 14
+    }
+  ],
+  "files": {
+    "adk_parallel_code_review.py": {
+      "lines": 539,
+      "mi": 34.4
+    }
+  }
+}

@@ -1,0 +1,508 @@
+{
+ "clean_stats.py": {
+  "code": "\"\"\"PR #158: 기본 통계 함수 추가 (리뷰 실습용 — 비교적 잘 작성된 코드).\"\"\"\n\nfrom collections import Counter\nfrom statistics import mean, median\n\n\ndef summarize(values: list[float]) -> dict[str, float]:\n    \"\"\"Return basic descriptive statistics for a non-empty list of numbers.\"\"\"\n    if not values:\n        raise ValueError(\"values must not be empty\")\n    return {\n        \"count\": len(values),\n        \"mean\": mean(values),\n        \"median\": median(values),\n        \"min\": min(values),\n        \"max\": max(values),\n    }\n\n\ndef most_common_words(text: str, n: int = 3) -> list[tuple[str, int]]:\n    \"\"\"Return the n most frequent lowercase words in text.\"\"\"\n    words = text.lower().split()\n    return Counter(words).most_common(n)\n\n\ndef unique_in_order(items: list[str]) -> list[str]:\n    \"\"\"Remove duplicates while keeping the first occurrence order.\"\"\"\n    seen: set[str] = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return result\n",
+  "scan_security_patterns": {
+   "status": "success",
+   "count": 0,
+   "findings": []
+  },
+  "run_pep8_check": {
+   "status": "success",
+   "total": 0,
+   "by_code": {},
+   "samples": [],
+   "naming": []
+  },
+  "analyze_complexity": {
+   "status": "success",
+   "functions": [
+    {
+     "function": "summarize",
+     "line": 7,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "most_common_words",
+     "line": 20,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "unique_in_order",
+     "line": 26,
+     "loop_depth": 1,
+     "estimated": "O(n)"
+    }
+   ],
+   "hotspots": []
+  }
+ },
+ "report_utils.py": {
+  "code": "# PR #151: 월간 매출 리포트 유틸 추가 (리뷰 실습용 — 스타일·성능 위주로 문제가 있는 코드)\nimport json,csv\nfrom datetime import datetime\n\n\nclass reportGenerator:\n    def __init__(self, Sales):\n        self.Sales = Sales\n\n    def TotalByMonth(self):\n        months = {}\n        for s in self.Sales:\n            m = s[\"date\"][:7]\n            if m in months.keys():\n                months[m] = months[m] + s[\"amount\"]\n            else:\n                months[m] = s[\"amount\"]\n        return months\n\n    def top_products(self, n = 5):\n        names = list(set([s[\"product\"] for s in self.Sales]))\n        totals = []\n        for name in names:\n            t = 0\n            for s in self.Sales:\n                if s[\"product\"] == name: t += s[\"amount\"]\n            totals.append((name, t))\n        totals.sort(key = lambda x: -x[1])\n        return totals[:n]\n\n    def fibonacci_growth(self, k):\n        if k < 2: return k\n        return self.fibonacci_growth(k - 1) + self.fibonacci_growth(k - 2)\n\n    def export(self, path):\n        f = open(path, \"w\")\n        for m, v in self.TotalByMonth().items():\n            f.write(m + \",\" + str(v) + \"\\n\")\n        f.close()\n\n    def load_rates(self, path):\n        for s in self.Sales:\n            rates = json.load(open(path))\n            s[\"amount_usd\"] = s[\"amount\"] * rates.get(s.get(\"currency\", \"USD\"), 1.0)\n        return self.Sales\n",
+  "scan_security_patterns": {
+   "status": "success",
+   "count": 0,
+   "findings": []
+  },
+  "run_pep8_check": {
+   "status": "success",
+   "total": 9,
+   "by_code": {
+    "E401": 1,
+    "E231": 1,
+    "E251": 4,
+    "E701": 2,
+    "E501": 1
+   },
+   "samples": [
+    {
+     "line": 2,
+     "code": "E401",
+     "message": "multiple imports on one line"
+    },
+    {
+     "line": 2,
+     "code": "E231",
+     "message": "missing whitespace after ','"
+    },
+    {
+     "line": 20,
+     "code": "E251",
+     "message": "unexpected spaces around keyword / parameter equals"
+    },
+    {
+     "line": 20,
+     "code": "E251",
+     "message": "unexpected spaces around keyword / parameter equals"
+    },
+    {
+     "line": 26,
+     "code": "E701",
+     "message": "multiple statements on one line (colon)"
+    },
+    {
+     "line": 28,
+     "code": "E251",
+     "message": "unexpected spaces around keyword / parameter equals"
+    },
+    {
+     "line": 28,
+     "code": "E251",
+     "message": "unexpected spaces around keyword / parameter equals"
+    },
+    {
+     "line": 32,
+     "code": "E701",
+     "message": "multiple statements on one line (colon)"
+    },
+    {
+     "line": 44,
+     "code": "E501",
+     "message": "line too long (84 > 79 characters)"
+    }
+   ],
+   "naming": [
+    {
+     "line": 6,
+     "name": "reportGenerator",
+     "message": "클래스 이름은 CapWords (PEP8)"
+    },
+    {
+     "line": 10,
+     "name": "TotalByMonth",
+     "message": "함수 이름은 snake_case (PEP8)"
+    },
+    {
+     "line": 7,
+     "name": "Sales",
+     "message": "인자 이름은 snake_case (PEP8)"
+    }
+   ]
+  },
+  "analyze_complexity": {
+   "status": "success",
+   "functions": [
+    {
+     "function": "__init__",
+     "line": 7,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "TotalByMonth",
+     "line": 10,
+     "loop_depth": 1,
+     "estimated": "O(n)"
+    },
+    {
+     "function": "top_products",
+     "line": 20,
+     "loop_depth": 2,
+     "estimated": "O(n^2)"
+    },
+    {
+     "function": "fibonacci_growth",
+     "line": 31,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "export",
+     "line": 35,
+     "loop_depth": 1,
+     "estimated": "O(n)"
+    },
+    {
+     "function": "load_rates",
+     "line": 41,
+     "loop_depth": 1,
+     "estimated": "O(n)"
+    }
+   ],
+   "hotspots": [
+    {
+     "line": 14,
+     "issue": "`m in months.keys()` — dict 멤버십에 .keys()는 불필요",
+     "fix": "`key in my_dict`로 충분 (성능 영향은 작음, 가독성 개선)"
+    },
+    {
+     "line": 31,
+     "issue": "fibonacci_growth: 메모이제이션 없는 다중 재귀 → 지수 시간 O(2^n)",
+     "fix": "functools.lru_cache 또는 반복문으로 변경"
+    },
+    {
+     "line": 43,
+     "issue": "반복문 안에서 파일을 매번 열고 읽음 (I/O 반복, 파일 핸들 누수 위험)",
+     "fix": "반복문 밖에서 with open(...)으로 한 번만 읽기"
+    }
+   ]
+  }
+ },
+ "user_service.py": {
+  "code": "# PR #142: 사용자 검색·백업 기능 추가 (리뷰 실습용 — 일부러 문제를 넣은 코드)\nimport os, sqlite3, subprocess, pickle\nimport hashlib\n\nDB_PATH = \"users.db\"\nAPI_SECRET = \"sk-live-9f8a7b6c5d4e3f2a1b0c\"   # TODO: move to env\n\n\ndef find_user(username):\n    conn = sqlite3.connect(DB_PATH)\n    cur = conn.cursor()\n    query = \"SELECT id, name, email FROM users WHERE name = '%s'\" % username\n    cur.execute(query)\n    return cur.fetchall()\n\n\ndef backup_user_files(user_dir):\n    cmd = \"tar -czf /tmp/backup.tar.gz \" + user_dir\n    subprocess.call(cmd, shell=True)\n\n\ndef load_session(raw_bytes):\n    return pickle.loads(raw_bytes)\n\n\ndef hash_password(pw):\n    return hashlib.md5(pw.encode()).hexdigest()\n\n\ndef calc_discount(expr):\n    return eval(expr)\n\n\ndef find_duplicate_emails(users):\n    duplicates=[]\n    for i in range(len(users)):\n        for j in range(len(users)):\n            if i!=j and users[i]['email']==users[j]['email']:\n                if users[i]['email'] not in duplicates:\n                    duplicates.append(users[i]['email'])\n    return duplicates\n\n\ndef build_report(users):\n    report = \"\"\n    for u in users:\n        report += f\"{u['id']},{u['name']},{u['email']}\\n\"\n    return report\n\n\ndef get_active_users(user_ids, active_list):\n    result = []\n    for uid in user_ids:\n        if uid in active_list:\n            result.append(uid)\n    return result\n",
+  "scan_security_patterns": {
+   "status": "success",
+   "count": 7,
+   "findings": [
+    {
+     "severity": "HIGH",
+     "rule": "Hardcoded secret",
+     "line": 6,
+     "snippet": "API_SECRET = \"sk-live-9f8a7b6c5d4e3f2a1b0c\"   # TODO: move to env",
+     "fix": "환경변수나 비밀 관리 도구(os.environ, Secret Manager)로 이동"
+    },
+    {
+     "severity": "HIGH",
+     "rule": "SQL injection",
+     "line": 12,
+     "snippet": "query = \"SELECT id, name, email FROM users WHERE name = '%s'\" % username",
+     "fix": "파라미터 바인딩 사용: cur.execute('... WHERE name = ?', (username,))"
+    },
+    {
+     "severity": "LOW",
+     "rule": "Hardcoded /tmp path",
+     "line": 18,
+     "snippet": "cmd = \"tar -czf /tmp/backup.tar.gz \" + user_dir",
+     "fix": "tempfile 모듈로 안전한 임시 경로 생성"
+    },
+    {
+     "severity": "HIGH",
+     "rule": "Command injection (shell=True)",
+     "line": 19,
+     "snippet": "subprocess.call(cmd, shell=True)",
+     "fix": "인자 리스트로 실행: subprocess.run(['tar', '-czf', out, user_dir], check=True)"
+    },
+    {
+     "severity": "HIGH",
+     "rule": "Insecure deserialization (pickle)",
+     "line": 23,
+     "snippet": "return pickle.loads(raw_bytes)",
+     "fix": "신뢰할 수 없는 데이터는 json 등 안전한 형식 사용"
+    },
+    {
+     "severity": "MEDIUM",
+     "rule": "Weak hash (md5/sha1) for passwords",
+     "line": 27,
+     "snippet": "return hashlib.md5(pw.encode()).hexdigest()",
+     "fix": "비밀번호는 hashlib.scrypt / bcrypt / argon2 사용"
+    },
+    {
+     "severity": "HIGH",
+     "rule": "Arbitrary code execution (eval/exec)",
+     "line": 31,
+     "snippet": "return eval(expr)",
+     "fix": "ast.literal_eval 또는 명시적 파서 사용"
+    }
+   ]
+  },
+  "run_pep8_check": {
+   "status": "success",
+   "total": 4,
+   "by_code": {
+    "E401": 1,
+    "E225": 3
+   },
+   "samples": [
+    {
+     "line": 2,
+     "code": "E401",
+     "message": "multiple imports on one line"
+    },
+    {
+     "line": 35,
+     "code": "E225",
+     "message": "missing whitespace around operator"
+    },
+    {
+     "line": 38,
+     "code": "E225",
+     "message": "missing whitespace around operator"
+    },
+    {
+     "line": 38,
+     "code": "E225",
+     "message": "missing whitespace around operator"
+    }
+   ],
+   "naming": []
+  },
+  "analyze_complexity": {
+   "status": "success",
+   "functions": [
+    {
+     "function": "find_user",
+     "line": 9,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "backup_user_files",
+     "line": 17,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "load_session",
+     "line": 22,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "hash_password",
+     "line": 26,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "calc_discount",
+     "line": 30,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "find_duplicate_emails",
+     "line": 34,
+     "loop_depth": 2,
+     "estimated": "O(n^2)"
+    },
+    {
+     "function": "build_report",
+     "line": 44,
+     "loop_depth": 1,
+     "estimated": "O(n)"
+    },
+    {
+     "function": "get_active_users",
+     "line": 51,
+     "loop_depth": 1,
+     "estimated": "O(n)"
+    }
+   ],
+   "hotspots": [
+    {
+     "line": 36,
+     "issue": "range(len(...)) 인덱스 순회",
+     "fix": "enumerate 또는 직접 순회"
+    },
+    {
+     "line": 37,
+     "issue": "range(len(...)) 인덱스 순회",
+     "fix": "enumerate 또는 직접 순회"
+    },
+    {
+     "line": 39,
+     "issue": "반복문 안의 멤버십 검사 `users[i]['email'] not in duplicates` — 리스트라면 매번 O(n)",
+     "fix": "검사 대상을 set으로 만들어 O(1) 조회"
+    },
+    {
+     "line": 47,
+     "issue": "반복문 안에서 문자열 += 누적 → O(n^2) 복사 가능",
+     "fix": "리스트에 모은 뒤 ''.join(...)"
+    },
+    {
+     "line": 54,
+     "issue": "반복문 안의 멤버십 검사 `uid in active_list` — 리스트라면 매번 O(n)",
+     "fix": "검사 대상을 set으로 만들어 O(1) 조회"
+    }
+   ]
+  }
+ },
+ "syntax_error.py": {
+  "code": "def broken(:\n    pass\n",
+  "scan_security_patterns": {
+   "status": "success",
+   "count": 0,
+   "findings": []
+  },
+  "run_pep8_check": {
+   "status": "error",
+   "message": "구문 오류로 분석할 수 없습니다: invalid syntax (<unknown>, line 1)"
+  },
+  "analyze_complexity": {
+   "status": "error",
+   "message": "구문 오류로 분석할 수 없습니다: invalid syntax (<unknown>, line 1)"
+  }
+ },
+ "edge_cases.py": {
+  "code": "import pickle\n# eval(x)\nclass bad_name:\n    def Method(self, ArgX):\n        s = ''\n        seen = set()\n        for i in range(len(ArgX)):\n            s += f'{i}'\n            if i in seen: pass\n            if i in ArgX: pass\n            if i in d.keys(): pass\n            open('f')\n        return s\n\n@lru_cache\ndef fib(n):\n    return fib(n-1) + fib(n-2)\n\ndef fib2(n):\n    return fib2(n-1) + fib2(n-2)\n\nyaml.load(x)\npassword = 'supersecret123'\n",
+  "scan_security_patterns": {
+   "status": "success",
+   "count": 2,
+   "findings": [
+    {
+     "severity": "MEDIUM",
+     "rule": "Unsafe YAML load",
+     "line": 22,
+     "snippet": "yaml.load(x)",
+     "fix": "yaml.safe_load 사용"
+    },
+    {
+     "severity": "HIGH",
+     "rule": "Hardcoded secret",
+     "line": 23,
+     "snippet": "password = 'supersecret123'",
+     "fix": "환경변수나 비밀 관리 도구(os.environ, Secret Manager)로 이동"
+    }
+   ]
+  },
+  "run_pep8_check": {
+   "status": "success",
+   "total": 7,
+   "by_code": {
+    "E302": 3,
+    "E701": 3,
+    "E305": 1
+   },
+   "samples": [
+    {
+     "line": 3,
+     "code": "E302",
+     "message": "expected 2 blank lines, found 0"
+    },
+    {
+     "line": 9,
+     "code": "E701",
+     "message": "multiple statements on one line (colon)"
+    },
+    {
+     "line": 10,
+     "code": "E701",
+     "message": "multiple statements on one line (colon)"
+    },
+    {
+     "line": 11,
+     "code": "E701",
+     "message": "multiple statements on one line (colon)"
+    },
+    {
+     "line": 15,
+     "code": "E302",
+     "message": "expected 2 blank lines, found 1"
+    },
+    {
+     "line": 19,
+     "code": "E302",
+     "message": "expected 2 blank lines, found 1"
+    },
+    {
+     "line": 22,
+     "code": "E305",
+     "message": "expected 2 blank lines after class or function definition, found 1"
+    }
+   ],
+   "naming": [
+    {
+     "line": 3,
+     "name": "bad_name",
+     "message": "클래스 이름은 CapWords (PEP8)"
+    },
+    {
+     "line": 4,
+     "name": "Method",
+     "message": "함수 이름은 snake_case (PEP8)"
+    },
+    {
+     "line": 4,
+     "name": "ArgX",
+     "message": "인자 이름은 snake_case (PEP8)"
+    }
+   ]
+  },
+  "analyze_complexity": {
+   "status": "success",
+   "functions": [
+    {
+     "function": "fib",
+     "line": 16,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "fib2",
+     "line": 19,
+     "loop_depth": 0,
+     "estimated": "O(1)~O(n)"
+    },
+    {
+     "function": "Method",
+     "line": 4,
+     "loop_depth": 1,
+     "estimated": "O(n)"
+    }
+   ],
+   "hotspots": [
+    {
+     "line": 7,
+     "issue": "range(len(...)) 인덱스 순회",
+     "fix": "enumerate 또는 직접 순회"
+    },
+    {
+     "line": 8,
+     "issue": "반복문 안에서 문자열 += 누적 → O(n^2) 복사 가능",
+     "fix": "리스트에 모은 뒤 ''.join(...)"
+    },
+    {
+     "line": 10,
+     "issue": "반복문 안의 멤버십 검사 `i in ArgX` — 리스트라면 매번 O(n)",
+     "fix": "검사 대상을 set으로 만들어 O(1) 조회"
+    },
+    {
+     "line": 11,
+     "issue": "`i in d.keys()` — dict 멤버십에 .keys()는 불필요",
+     "fix": "`key in my_dict`로 충분 (성능 영향은 작음, 가독성 개선)"
+    },
+    {
+     "line": 12,
+     "issue": "반복문 안에서 파일을 매번 열고 읽음 (I/O 반복, 파일 핸들 누수 위험)",
+     "fix": "반복문 밖에서 with open(...)으로 한 번만 읽기"
+    },
+    {
+     "line": 19,
+     "issue": "fib2: 메모이제이션 없는 다중 재귀 → 지수 시간 O(2^n)",
+     "fix": "functools.lru_cache 또는 반복문으로 변경"
+    }
+   ]
+  }
+ }
+}
