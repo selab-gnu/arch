@@ -83,18 +83,22 @@ ADK 2.11에서 같은 구성으로 실험한 결과:
 ### 3. 재개는 "최소 한 번"만 보장한다 → 멱등(idempotent) 송금
 
 ADK 문서는 재개 시 도구가 **최소 한 번(at-least-once)** 실행된다고만 보장합니다(다시 실행될 수 있음).
-그래서 송금 함수 `_transfer`는 (계좌, 거래처, 금액, 메모)로 **멱등 키**를 만들어, 같은 송금이 다시 들어오면 새로 송금하지 않고 기존 결과(`already_processed`)를 돌려줍니다.
+그래서 송금 함수 `_transfer`(`payment_tools.py`)는 (계좌, 거래처, 금액, 메모)로 **멱등 키**를 만들어, 같은 송금이 다시 들어오면 새로 송금하지 않고 기존 결과(`already_processed`)를 돌려줍니다.
 
 ### 덧붙여: 정책은 프롬프트가 아니라 코드로 강제
 
-`process_payment`는 호출될 때마다 정책을 **다시 검사**하고, 자동 처리 대상이 아니면 거부(`refused`)합니다.
+`process_payment`(`payment_tools.py`)는 호출될 때마다 정책을 **다시 검사**하고, 자동 처리 대상이 아니면 거부(`refused`)합니다.
 LLM이 instruction을 어기고 고액을 바로 송금하려 해도 코드가 막습니다. 테스트에서 "실수하는 LLM"을 흉내 내 일부러 고액을 `process_payment`로 보냈습니다. 코드가 거부했고, 이후 승인 절차로 넘어가는 것을 확인했습니다.
 
 ## 폴더 구성
 
 ```
 37_human_in_the_loop/
-├── adk_human_in_the_loop.py   # 이 예제
+├── adk_human_in_the_loop.py   # 이 예제의 핵심: 에이전트 2개 + require_confirmation 도구 + 재개 가능 App + 멈춤→재개 루프
+├── payment_tools.py           # 송금 업무: 계좌·정책 데이터, 정책 판정(_evaluate), 멱등 송금(_transfer), 에이전트 도구
+├── model_config.py            # API 키에 맞춰 Gemini / Claude / OpenAI 모델 자동 선택 (resolve_model)
+├── error_messages.py          # 서버 과부하·요청 한도 같은 일시적 오류 안내 문구
+├── tests/                     # 동작 고정용 테스트 (pytest, 네트워크·API 키 불필요)
 ├── README.md
 └── data/
     ├── accounts.json          # 가상 회사 '경상테크'의 법인 계좌 3개, 등록 거래처 4곳
@@ -318,20 +322,27 @@ ADK_MODEL=gemini-3.5-flash-lite python adk_human_in_the_loop.py --demo
 ```
 
 > **Claude를 Anthropic API 키로 쓸 때 주의**: ADK에 `model="claude-sonnet-5-5"`처럼 이름만 넘기면, ADK는 이것을 **Vertex AI(Google Cloud)의 Claude**로 연결해 Google Cloud 프로젝트를 요구합니다.
-> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(코드의 `resolve_model()` 참고).
+> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(`model_config.py`의 `resolve_model()` 참고).
 
 ## 웹 UI로 실행 (`adk web`)
 
 ```bash
 mkdir -p hitl_agent
-cp adk_human_in_the_loop.py hitl_agent/agent.py
-cp -r data hitl_agent/data
+# 코드가 여러 파일로 나뉘어 있으므로 복사하지 않고, 예제 폴더의 app과 root_agent를 불러오는 agent.py를 만듭니다.
+# app(재개 가능 설정)도 함께 내보내야 adk web이 root_agent 대신 재개 가능한 App을 불러옵니다.
+cat > hitl_agent/agent.py <<'EOF'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # 예제 폴더(37_human_in_the_loop)
+from adk_human_in_the_loop import app, root_agent  # noqa: E402,F401
+EOF
 echo "from . import agent" > hitl_agent/__init__.py
 echo "GOOGLE_API_KEY=발급받은_키" > hitl_agent/.env      # 또는 ANTHROPIC_API_KEY=... / OPENAI_API_KEY=...
 adk web                              # 브라우저에서 http://localhost:8000 → hitl_agent 선택
 ```
 
-웹 UI에서도 도구 확인 요청 이벤트가 표시되지만, 응답 방식은 ADK 버전에 따라 다를 수 있습니다. 또 `adk web`이 이 파일의 `app`(재개 가능 설정) 대신 `root_agent`를 불러오면 위 함정 2의 재시작 동작이 나타날 수 있습니다. 멈춤과 재개를 정확히 관찰하려면 **명령행 실행을 권장**합니다.
+웹 UI에서도 도구 확인 요청 이벤트가 표시되지만, 응답 방식은 ADK 버전에 따라 다를 수 있습니다. 위 `agent.py`처럼 `app`을 함께 내보내면 `adk web`이 재개 가능한 `App`을 불러옵니다(google-adk 2.14에서 확인). `app` 없이 `root_agent`만 내보내면 위 함정 2의 재시작 동작이 나타날 수 있습니다. 멈춤과 재개를 정확히 관찰하려면 **명령행 실행을 권장**합니다.
 
 > `adk web`은 에이전트 폴더의 `.env` 파일에서 키를 읽습니다. 키가 담긴 `.env`는 git에 커밋하지 마세요.
 
@@ -341,7 +352,7 @@ adk web                              # 브라우저에서 http://localhost:8000 
 |---|---|---|
 | 모델 공급자 | `export ADK_PROVIDER=gemini` / `claude` / `openai` | 설정된 키로 자동 감지 |
 | 사용 모델 | `export ADK_MODEL=gemini-3.5-flash-lite` (또는 `claude-opus-5-5`, `gpt-5.6-luna` …) | 공급자별 기본 모델 |
-| 공급자별 기본 모델 | 코드의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
+| 공급자별 기본 모델 | `model_config.py`의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
 | 자동 처리 한도 | `data/policy.json`의 `auto_approve_limit_krw` | 1,000,000원 |
 | 신규 거래처 승인 | `data/policy.json`의 `require_approval_for_new_payee` | `true` |
 | 계좌·거래처 | `data/accounts.json` | 계좌 3개, 거래처 4곳 |
@@ -349,8 +360,8 @@ adk web                              # 브라우저에서 http://localhost:8000 
 
 ## 실습 과제 아이디어
 
-1. **함정 직접 확인하기**: `main()`의 `InMemoryRunner(app=app)`를 `InMemoryRunner(agent=workflow, app_name=APP_NAME)`로 바꿔 시나리오 2를 실행해 보세요. 승인 후 TransactionAgent가 다시 도는 것을 확인할 수 있습니다. 이어서 `_transfer`의 멱등 처리를 빼면 무슨 일이 생길지 생각해 보세요.
-2. **조건부 확인**: `ApprovalToolAgent`를 없애고, TransactionAgent의 송금 도구에 `require_confirmation=lambda amount_krw, payee, **_: ...`처럼 **함수**를 넘겨 고위험일 때만 멈추게 바꿔 보세요. 두 구조(별도 승인 에이전트 vs 조건부 확인)의 장단점을 비교해 보세요.
+1. **함정 직접 확인하기**: `main()`의 `InMemoryRunner(app=app)`를 `InMemoryRunner(agent=workflow, app_name=APP_NAME)`로 바꿔 시나리오 2를 실행해 보세요. 승인 후 TransactionAgent가 다시 도는 것을 확인할 수 있습니다. 이어서 `payment_tools.py`의 `_transfer`에서 멱등 처리를 빼면 무슨 일이 생길지 생각해 보세요.
+2. **조건부 확인**: `ApprovalToolAgent`를 없애고, TransactionAgent의 송금 도구(`adk_human_in_the_loop.py`의 `tools=[...]`)를 `FunctionTool(process_payment, require_confirmation=lambda amount_krw, payee, **_: ...)`처럼 감싸고, `require_confirmation`에 True 대신 **함수**를 넘겨 고위험일 때만 멈추게 바꿔 보세요. 두 구조(별도 승인 에이전트 vs 조건부 확인)의 장단점을 비교해 보세요.
 3. **다단계 결재**: 5,000만 원 이상은 팀장 승인 후 재무이사 승인까지 받도록 확인을 두 번 받게 바꿔 보세요. 확인 응답의 `payload`에 승인자 직급을 담아 검사할 수 있습니다.
 4. **감사 로그**: 승인/거절 결정(승인자, 의견, 시각)을 `state["audit_log"]`에 남기고, 실행 끝에 출력하거나 파일로 저장해 보세요.
 
