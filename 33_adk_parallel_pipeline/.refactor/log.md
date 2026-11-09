@@ -9,3 +9,4 @@
 | 4 | 2026-11-09 | analyze_complexity 쪼개기 | — | 건너뜀 (사용자 선택) |
 | 5 | 2026-11-09 | README: 폴더 구성에 새 파일 추가, 설정·실습 과제의 위치 갱신, adk web 안내를 '파일 복사' 대신 root_agent를 불러오는 agent.py로 변경 — ADK AgentLoader로 로드 확인 | 59.6 → 59.6 | 채택 (문서) |
 | 6 | 2026-11-09 | 마무리: CLAUDE.md에 파일 역할·재발 방지 규칙 추가 | 34.4 → 59.6 (전체) | 완료 |
+| fix | 2026-11-09 | (분리와 별개) 여러 건 실행 시 OpenAI·Claude에서 'Event loop is closed'로 멈추던 문제 수정: asyncio.run → 공유 asyncio.Runner. 확인 테스트 tests/test_event_loop_reuse.py 추가 | — | 수정 |

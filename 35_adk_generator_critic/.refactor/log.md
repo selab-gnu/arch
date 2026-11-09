@@ -8,3 +8,4 @@
 | 3 | 2026-11-09 | DB·SQL(SCHEMA_PATH, SCHEMA_SQL, new_db, schema_for_prompt, clean_sql, validate_sql, run_sql, same_result) → sql_tools.py, 재수출, import re/ToolContext 제거(sqlite3는 show가 쓰므로 유지) | 53.3 → 61.4 | 채택 (최대 파일 363→293줄) |
 | 4 | 2026-11-09 | README: 폴더 구성에 새 파일 추가, 설정 표에 위치 갱신·SQL 검증 규칙/정답 비교 방식 위치 추가, adk web 안내를 '파일·data 복사' 대신 root_agent를 불러오는 agent.py로 변경 — ADK AgentLoader로 루프 로드 확인 | 61.4 → 61.4 | 채택 (문서) |
 | 5 | 2026-11-09 | 마무리: CLAUDE.md에 파일 역할·재발 방지 규칙 추가 | 40.6 → 61.4 (전체) | 완료 |
+| fix | 2026-11-09 | (분리와 별개) 여러 건 실행 시 OpenAI·Claude에서 'Event loop is closed'로 멈추던 문제 수정: asyncio.run → 공유 asyncio.Runner. 확인 테스트 tests/test_event_loop_reuse.py 추가 | — | 수정 |

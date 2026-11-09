@@ -19,3 +19,5 @@
 - 도구의 동작을 일부러 바꿨다면 `tests/tool_snapshots.json`을 다시 만들고 그 이유를 커밋 메시지에 적는다.
 - `analyze_complexity`(복잡도 49)를 고칠 일이 생기면, 먼저 같은 파일 안의 작은 도우미 함수들로 나눈 뒤(스냅샷이 같은지 확인) 고친다.
 - 파일 구조를 바꾸면 README의 "폴더 구성"과 `adk web` 실행 방법도 함께 고친다.
+- **여러 건을 실행할 때 `asyncio.run()`을 건마다 부르지 않는다.** 이미 있는 `_LOOP_RUNNER.run(...)`(하나의 이벤트 루프)을 쓴다.
+  OpenAI·Claude 연결 도구는 처음 만든 연결을 재사용하므로 루프가 바뀌면 `Event loop is closed`로 멈춘다(`tests/test_event_loop_reuse.py`로 확인).

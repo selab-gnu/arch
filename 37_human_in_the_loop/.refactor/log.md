@@ -8,3 +8,4 @@
 | 3 | 2026-11-09 | 송금 업무(DATA_DIR, _load, ACCOUNTS, POLICY, won, _balances, _evaluate, _transfer, 도구 4개, execute_approved_transaction 본문) → payment_tools.py, 재수출. require_confirmation=True 감싸기·App 재개 설정은 핵심 파일에 유지. import hashlib/uuid/datetime/Path/ToolContext 제거 | 53.1 → 63.0 | 채택 (최대 파일 399→267줄) |
 | 4 | 2026-11-09 | README: 폴더 구성에 새 파일 추가, 본문·설정·실습 과제의 위치 갱신, adk web 안내를 '파일·data 복사' 대신 app과 root_agent를 불러오는 agent.py로 변경 — ADK AgentLoader가 재개 가능한 App(is_resumable=True)을 불러오는 것 확인 | 63.0 → 63.0 | 채택 (문서) |
 | 5 | 2026-11-09 | 마무리: CLAUDE.md에 파일 역할·재발 방지 규칙(정책은 코드로 강제, 멱등 송금, app으로 실행) 추가 | 41.2 → 63.0 (전체) | 완료 |
+| fix | 2026-11-09 | (분리와 별개) 여러 건 실행 시 OpenAI·Claude에서 'Event loop is closed'로 멈추던 문제 수정: asyncio.run → 공유 asyncio.Runner. 확인 테스트 tests/test_event_loop_reuse.py 추가 | — | 수정 |

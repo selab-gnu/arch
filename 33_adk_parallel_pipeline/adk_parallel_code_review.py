@@ -41,6 +41,7 @@ API 키 (아래 중 하나만 있으면 자동으로 감지해 해당 모델을 
 모델 지정 예) export ADK_MODEL=gemini-3.5-flash-lite / claude-opus-5-5 / gpt-5.6-luna
 """
 
+import atexit
 import asyncio
 import sys
 import time
@@ -70,6 +71,10 @@ from model_config import DEFAULT_MODELS, _has_key, _provider_of, resolve_model  
 
 MODEL, MODEL_LABEL, MODEL_PROVIDER = resolve_model()
 _READY = [False]
+# 실행기(이벤트 루프)는 하나만 만들어 계속 씁니다. 건마다 asyncio.run()으로 새 루프를 만들면,
+# 처음 만든 연결을 재사용하는 OpenAI·Claude 연결 도구가 두 번째 건부터 'Event loop is closed'로 멈춥니다.
+_LOOP_RUNNER = asyncio.Runner()
+atexit.register(_LOOP_RUNNER.close)
 
 
 # 일시적 오류(서버 과부하·요청 한도) 안내 문구 (error_messages.py)
@@ -99,7 +104,7 @@ def run_safe(coro):
         print(f"🧠 사용 모델: {MODEL_LABEL}")
         _READY[0] = True
     try:
-        return asyncio.run(coro)
+        return _LOOP_RUNNER.run(coro)
     except Exception as e:
         transient = transient_error_message(e, MODEL_LABEL)
         if transient:

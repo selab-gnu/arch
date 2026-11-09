@@ -9,3 +9,4 @@
 | 3 | 2026-11-09 | 성능 측정(BENCH_TIMEOUT, clean_code, HARNESS, benchmark, benchmark_current_draft) → benchmark_tools.py, 재수출, import re/subprocess/tempfile/ToolContext 제거. 인코딩 수정(-X utf8) 그대로 옮겨짐 — 인코딩 테스트 PYTHONUTF8=0/1 모두 통과 | 52.8 → 60.5 | 채택 (최대 파일 394→314줄) |
 | 4 | 2026-11-09 | README: 폴더 구성에 새 파일 추가, 설정·안전 주의·실습 과제의 위치 갱신(-X utf8 반영), 문제 해결에 인코딩 버그 항목 추가, adk web 안내를 '파일·data 복사' 대신 root_agent를 불러오는 agent.py로 변경 — ADK AgentLoader로 로드 확인 | 60.5 → 60.5 | 채택 (문서) |
 | 5 | 2026-11-09 | 마무리: CLAUDE.md에 파일 역할·재발 방지 규칙(자식 프로세스 인코딩 명시 포함) 추가 | 40.5 → 60.5 (전체) | 완료 |
+| fix | 2026-11-09 | (분리와 별개) 여러 건 실행 시 OpenAI·Claude에서 'Event loop is closed'로 멈추던 문제 수정: asyncio.run → 공유 asyncio.Runner. 확인 테스트 tests/test_event_loop_reuse.py 추가 | — | 수정 |

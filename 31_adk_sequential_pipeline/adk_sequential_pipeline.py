@@ -31,6 +31,7 @@ API 키 (아래 중 하나만 있으면 자동으로 감지해 해당 모델을 
 모델 지정 예) export ADK_MODEL=gemini-3.5-flash-lite / claude-opus-5-5 / gpt-5.6-luna
 """
 
+import atexit
 import asyncio
 import re
 import sys
@@ -56,6 +57,10 @@ from model_config import DEFAULT_MODELS, _has_key, _provider_of, resolve_model  
 
 
 MODEL, MODEL_LABEL = resolve_model()
+# 실행기(이벤트 루프)는 하나만 만들어 계속 씁니다. 건마다 asyncio.run()으로 새 루프를 만들면,
+# 처음 만든 연결을 재사용하는 OpenAI·Claude 연결 도구가 두 번째 건부터 'Event loop is closed'로 멈춥니다.
+_LOOP_RUNNER = asyncio.Runner()
+atexit.register(_LOOP_RUNNER.close)
 APP_NAME = "pdf_pipeline_app"
 
 
@@ -185,7 +190,7 @@ def main() -> None:
     for pdf_path in pdfs:
         print(f"\n{'=' * 70}\n▶ 처리 중: {pdf_path}\n{'=' * 70}")
         try:
-            state = asyncio.run(run_pipeline(str(pdf_path.resolve())))
+            state = _LOOP_RUNNER.run(run_pipeline(str(pdf_path.resolve())))
         except Exception as e:  # 키 오류는 긴 추적 대신 짧게 안내
             transient = transient_error_message(e, MODEL_LABEL)
             if transient:
