@@ -1,6 +1,6 @@
 {
-  "score": 52.8,
-  "max_file_lines": 394,
+  "score": 60.5,
+  "max_file_lines": 314,
   "complex_count": 4,
   "max_cc": 22,
   "complex_top10": [
@@ -23,8 +23,12 @@
   ],
   "files": {
     "adk_iterative_refinement.py": {
-      "lines": 394,
-      "mi": 47.8
+      "lines": 314,
+      "mi": 51.8
+    },
+    "benchmark_tools.py": {
+      "lines": 100,
+      "mi": 76.1
     },
     "error_messages.py": {
       "lines": 27,
