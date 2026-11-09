@@ -1,6 +1,6 @@
 {
-  "score": 71.0,
-  "max_file_lines": 227,
+  "score": 73.1,
+  "max_file_lines": 206,
   "complex_count": 1,
   "max_cc": 14,
   "complex_top10": [
@@ -11,8 +11,12 @@
   ],
   "files": {
     "adk_sequential_pipeline.py": {
-      "lines": 227,
-      "mi": 67.4
+      "lines": 206,
+      "mi": 71.6
+    },
+    "error_messages.py": {
+      "lines": 27,
+      "mi": 73.4
     },
     "model_config.py": {
       "lines": 79,
