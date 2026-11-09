@@ -1,6 +1,6 @@
 {
-  "score": 40.6,
-  "max_file_lines": 454,
+  "score": 50.0,
+  "max_file_lines": 384,
   "complex_count": 3,
   "max_cc": 19,
   "complex_top10": [
@@ -13,14 +13,18 @@
       "cc": 16
     },
     {
-      "name": "adk_generator_critic.py:resolve_model",
+      "name": "model_config.py:resolve_model",
       "cc": 14
     }
   ],
   "files": {
     "adk_generator_critic.py": {
-      "lines": 454,
-      "mi": 40.6
+      "lines": 384,
+      "mi": 45.7
+    },
+    "model_config.py": {
+      "lines": 78,
+      "mi": 71.2
     }
   }
 }
