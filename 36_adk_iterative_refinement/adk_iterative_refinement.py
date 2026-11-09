@@ -276,8 +276,12 @@ def benchmark(code: str, task: dict) -> dict:
         tjson.write_text(json.dumps(task, ensure_ascii=False), encoding="utf-8")
         harness.write_text(HARNESS, encoding="utf-8")
         try:
-            p = subprocess.run([sys.executable, "-I", str(harness), str(cand), str(tjson)],
-                               capture_output=True, text=True, timeout=BENCH_TIMEOUT, cwd=tmp)
+            # -X utf8 + encoding="utf-8": 자식과 부모가 항상 UTF-8로 주고받게 합니다.
+            # (한국어 Windows에서 PYTHONUTF8=1로 실행하면 자식은 cp949, 부모는 UTF-8로 읽어 결과를 잃던 문제 수정.
+            #  -I는 PYTHONUTF8 같은 환경 변수를 무시하므로 -X 옵션으로 직접 지정합니다.)
+            p = subprocess.run([sys.executable, "-I", "-X", "utf8", str(harness), str(cand), str(tjson)],
+                               capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               timeout=BENCH_TIMEOUT, cwd=tmp)
         except subprocess.TimeoutExpired:
             return {"correct": False, "error": f"시간 초과: {BENCH_TIMEOUT:.0f}초 안에 끝나지 않음 (복잡도 개선 필요)"}
     try:
