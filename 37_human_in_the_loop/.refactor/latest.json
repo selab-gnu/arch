@@ -1,6 +1,6 @@
 {
-  "score": 41.2,
-  "max_file_lines": 492,
+  "score": 50.1,
+  "max_file_lines": 421,
   "complex_count": 2,
   "max_cc": 22,
   "complex_top10": [
@@ -9,14 +9,18 @@
       "cc": 22
     },
     {
-      "name": "adk_human_in_the_loop.py:resolve_model",
+      "name": "model_config.py:resolve_model",
       "cc": 14
     }
   ],
   "files": {
     "adk_human_in_the_loop.py": {
-      "lines": 492,
-      "mi": 41.2
+      "lines": 421,
+      "mi": 46.2
+    },
+    "model_config.py": {
+      "lines": 78,
+      "mi": 71.2
     }
   }
 }
