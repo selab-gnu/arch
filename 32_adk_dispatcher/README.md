@@ -50,7 +50,11 @@ Google ADK(Agent Development Kit)로 구현한 **Coordinator/Dispatcher(컨시�
 
 ```
 32_adk_dispatcher/
-├── adk_coordinator_dispatcher.py   # 이 예제
+├── adk_coordinator_dispatcher.py   # 이 예제의 핵심: 코디네이터 + 전문가 2명 + 대화/데모 실행
+├── support_tools.py                # 상담 도구: 청구 조회·환불 4개, 장애 진단 3개 (data/*.json 조회)
+├── model_config.py                 # API 키에 맞춰 Gemini / Claude / OpenAI 모델 자동 선택 (resolve_model)
+├── error_messages.py               # 서버 과부하·요청 한도 같은 일시적 오류 안내 문구
+├── tests/                          # 동작 고정용 테스트 (pytest, 네트워크·API 키 불필요)
 ├── README.md
 └── data/
     ├── billing_db.json             # 가상의 청구 시스템: 고객 3명, 청구서 4건, 환불 정책
@@ -278,7 +282,7 @@ ADK_MODEL=gemini-3.5-flash-lite python adk_coordinator_dispatcher.py --demo
 ```
 
 > **Claude를 Anthropic API 키로 쓸 때 주의**: ADK에 `model="claude-sonnet-5-5"`처럼 이름만 넘기면, ADK는 이것을 **Vertex AI(Google Cloud)의 Claude**로 연결해 Google Cloud 프로젝트를 요구합니다.
-> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(코드의 `resolve_model()` 참고).
+> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(`model_config.py`의 `resolve_model()` 참고).
 
 ## 웹 UI로 실행 (`adk web`)
 
@@ -286,8 +290,14 @@ ADK 개발 UI에서는 어떤 에이전트가 응답했는지, 이벤트와 상�
 
 ```bash
 mkdir -p support_dispatcher
-cp adk_coordinator_dispatcher.py support_dispatcher/agent.py
-cp -r data support_dispatcher/data
+# 코드가 여러 파일로 나뉘어 있으므로 복사하지 않고, 예제 폴더의 root_agent를 불러오는 agent.py를 만듭니다.
+cat > support_dispatcher/agent.py <<'EOF'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # 예제 폴더(32_adk_dispatcher)
+from adk_coordinator_dispatcher import root_agent  # noqa: E402,F401
+EOF
 echo "from . import agent" > support_dispatcher/__init__.py
 echo "GOOGLE_API_KEY=발급받은_키" > support_dispatcher/.env      # 또는 ANTHROPIC_API_KEY=... / OPENAI_API_KEY=...
 adk web                              # 브라우저에서 http://localhost:8000 → support_dispatcher 선택
@@ -301,12 +311,12 @@ adk web                              # 브라우저에서 http://localhost:8000 
 |---|---|---|
 | 모델 공급자 | `export ADK_PROVIDER=gemini` / `claude` / `openai` | 설정된 키로 자동 감지 |
 | 사용 모델 | `export ADK_MODEL=gemini-3.5-flash-lite` (또는 `claude-opus-5-5`, `gpt-5.6-luna` …) | 공급자별 기본 모델 |
-| 공급자별 기본 모델 | 코드의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
+| 공급자별 기본 모델 | `model_config.py`의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
 | 고객·청구서 데이터 | `data/billing_db.json` 수정 | 고객 3명, 청구서 4건 |
 | 오류 코드·장애 정보 | `data/diagnostics_kb.json` 수정 | 오류 코드 5종 |
 | 데모 시나리오 | `data/demo_scenarios.json`의 `turns`에 질문 추가 | 시나리오 4개 |
 
-> `request_refund`는 접수 내역을 **세션 상태(`session.state["refund_tickets"]`)에만** 기록하며 JSON 파일은 바꾸지 않습니다.
+> `request_refund`(`support_tools.py`)는 접수 내역을 **세션 상태(`session.state["refund_tickets"]`)에만** 기록하며 JSON 파일은 바꾸지 않습니다.
 > 그래서 프로그램을 다시 실행하면 데이터가 항상 처음 상태로 돌아갑니다.
 
 ## 실습 과제 아이디어
@@ -314,7 +324,7 @@ adk web                              # 브라우저에서 http://localhost:8000 
 1. **전문가 추가**: 요금제 변경·신규 가입을 담당하는 `SalesSpecialist`를 만들어 `sub_agents`에 추가하고, 코디네이터 instruction의 분류 기준도 고쳐 보세요.
 2. **description 실험**: `BillingSpecialist`의 description을 일부러 모호하게 바꾼 뒤 라우팅이 어떻게 흔들리는지 관찰해 보세요.
 3. **되돌려 보내기 막기**: 전문가에 `disallow_transfer_to_parent=True`를 설정하면 시나리오 3이 어떻게 달라지는지 비교해 보세요.
-4. **Human-in-the-Loop 결합**: 일정 금액 이상의 환불은 바로 접수하지 않고 담당자 승인을 받도록 `request_refund`를 바꿔 보세요.
+4. **Human-in-the-Loop 결합**: 일정 금액 이상의 환불은 바로 접수하지 않고 담당자 승인을 받도록 `support_tools.py`의 `request_refund`를 바꿔 보세요.
 
 ## 문제 해결
 
