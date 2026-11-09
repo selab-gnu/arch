@@ -8,3 +8,4 @@
 | 3 | 2026-11-09 | 분석 도구(SECURITY_RULES, scan_security_patterns, run_pep8_check, analyze_complexity) → review_tools.py, 재수출, import ast/re/ToolContext 제거 | 46.9 → 59.6 | 채택 (최대 파일 447→298줄). review_tools.py 점수 50.4 — analyze_complexity(49) 때문 |
 | 4 | 2026-11-09 | analyze_complexity 쪼개기 | — | 건너뜀 (사용자 선택) |
 | 5 | 2026-11-09 | README: 폴더 구성에 새 파일 추가, 설정·실습 과제의 위치 갱신, adk web 안내를 '파일 복사' 대신 root_agent를 불러오는 agent.py로 변경 — ADK AgentLoader로 로드 확인 | 59.6 → 59.6 | 채택 (문서) |
+| 6 | 2026-11-09 | 마무리: CLAUDE.md에 파일 역할·재발 방지 규칙 추가 | 34.4 → 59.6 (전체) | 완료 |
