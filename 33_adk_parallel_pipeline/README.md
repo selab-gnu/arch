@@ -56,7 +56,11 @@ Google ADK(Agent Development Kit)로 구현한 **Parallel Fan-Out/Gather(문어 
 
 ```
 33_adk_parallel_pipeline/
-├── adk_parallel_code_review.py      # 이 예제
+├── adk_parallel_code_review.py      # 이 예제의 핵심: 리뷰어 3명 + ParallelAgent(Fan-out) + PRSummarizer(Gather) + 실행
+├── review_tools.py                  # 리뷰어별 정적 분석 도구: scan_security_patterns / run_pep8_check / analyze_complexity
+├── model_config.py                  # API 키에 맞춰 Gemini / Claude / OpenAI 모델 자동 선택 (resolve_model)
+├── error_messages.py                # 서버 과부하·요청 한도 같은 일시적 오류 안내 문구
+├── tests/                           # 동작 고정용 테스트 (pytest, 네트워크·API 키 불필요)
 ├── README.md
 ├── data/
 │   └── pr_samples/                  # 리뷰 실습용 PR 코드 (일부러 문제를 넣음)
@@ -281,13 +285,20 @@ ADK_MODEL=gemini-3.5-flash-lite python adk_parallel_code_review.py
 ```
 
 > **Claude를 Anthropic API 키로 쓸 때 주의**: ADK에 `model="claude-sonnet-5-5"`처럼 이름만 넘기면, ADK는 이것을 **Vertex AI(Google Cloud)의 Claude**로 연결해 Google Cloud 프로젝트를 요구합니다.
-> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(코드의 `resolve_model()` 참고).
+> 이 예제는 Anthropic API 키가 있으면 `AnthropicLlm(model=...)` 객체로 감싸서 Anthropic API로 직접 연결합니다(`model_config.py`의 `resolve_model()` 참고).
 
 ## 웹 UI로 실행 (`adk web`)
 
 ```bash
 mkdir -p code_review
-cp adk_parallel_code_review.py code_review/agent.py
+# 코드가 여러 파일로 나뉘어 있으므로 복사하지 않고, 예제 폴더의 root_agent를 불러오는 agent.py를 만듭니다.
+cat > code_review/agent.py <<'EOF'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # 예제 폴더(33_adk_parallel_pipeline)
+from adk_parallel_code_review import root_agent  # noqa: E402,F401
+EOF
 echo "from . import agent" > code_review/__init__.py
 echo "GOOGLE_API_KEY=발급받은_키" > code_review/.env      # 또는 ANTHROPIC_API_KEY=... / OPENAI_API_KEY=...
 adk web                              # 브라우저에서 http://localhost:8000 → code_review 선택
@@ -304,9 +315,9 @@ adk web                              # 브라우저에서 http://localhost:8000 
 |---|---|---|
 | 모델 공급자 | `export ADK_PROVIDER=gemini` / `claude` / `openai` | 설정된 키로 자동 감지 |
 | 사용 모델 | `export ADK_MODEL=gemini-3.5-flash-lite` (또는 `claude-opus-5-5`, `gpt-5.6-luna` …) | 공급자별 기본 모델 |
-| 공급자별 기본 모델 | 코드의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
-| 보안 검사 규칙 | 코드의 `SECURITY_RULES`에 (심각도, 이름, 정규식, 수정 방법) 추가 | 8개 규칙 |
-| 한 줄 최대 길이 | `run_pep8_check`의 `max_line_length` | 79 |
+| 공급자별 기본 모델 | `model_config.py`의 `DEFAULT_MODELS` | Gemini `gemini-3.8-flash` · Claude `claude-sonnet-5-5` · OpenAI `gpt-5.6` |
+| 보안 검사 규칙 | `review_tools.py`의 `SECURITY_RULES`에 (심각도, 이름, 정규식, 수정 방법) 추가 | 8개 규칙 |
+| 한 줄 최대 길이 | `review_tools.py`의 `run_pep8_check` 안 `max_line_length` | 79 |
 | 리뷰어 추가 | `LlmAgent`를 하나 더 만들어 `parallel_reviews.sub_agents`에 추가하고, `PRSummarizer` instruction에 새 `{output_key}` 추가 | 3명 |
 | 결과 파일 저장 | `--no-save` 옵션으로 끄기 | `reviews/`에 저장 |
 
@@ -314,7 +325,7 @@ adk web                              # 브라우저에서 http://localhost:8000 
 
 1. **순차 vs 병렬 비교**: `parallel_reviews`를 `SequentialAgent`로 바꿔 실행 타임라인과 총 소요 시간을 비교해 보세요.
 2. **키 충돌 실험**: 두 리뷰어의 `output_key`를 같은 이름으로 바꾸면 `PRSummarizer`가 무엇을 받는지 확인해 보세요 (경쟁 조건).
-3. **리뷰어 추가**: 테스트 누락을 점검하는 `TestCoverageReviewer`를 네 번째 병렬 워커로 추가해 보세요.
+3. **리뷰어 추가**: 테스트 누락을 점검하는 `TestCoverageReviewer`를 네 번째 병렬 워커로 추가해 보세요. (에이전트는 `adk_parallel_code_review.py`에, 근거가 되는 도구는 `review_tools.py`에 추가)
 4. **Generator & Critic 결합**: `PRSummarizer` 뒤에 "리뷰가 너무 공격적이지 않은지" 점검하는 Critic 루프를 붙여 보세요.
 5. **실제 PR에 적용**: `git diff`로 바뀐 파일만 골라 이 스크립트에 넘기는 셸 스크립트를 만들어 보세요.
 
