@@ -1,6 +1,6 @@
 {
-  "score": 50.1,
-  "max_file_lines": 421,
+  "score": 53.1,
+  "max_file_lines": 399,
   "complex_count": 2,
   "max_cc": 22,
   "complex_top10": [
@@ -15,8 +15,12 @@
   ],
   "files": {
     "adk_human_in_the_loop.py": {
-      "lines": 421,
-      "mi": 46.2
+      "lines": 399,
+      "mi": 48.2
+    },
+    "error_messages.py": {
+      "lines": 27,
+      "mi": 73.4
     },
     "model_config.py": {
       "lines": 78,
