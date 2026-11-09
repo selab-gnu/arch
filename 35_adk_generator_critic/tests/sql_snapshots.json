@@ -1,0 +1,577 @@
+{
+ "schema_for_prompt_sha": "ab2531ab744b1ce668ffeb37060b1e5102e8f1947e253e2deb6dbb342b1350f8",
+ "schema_for_prompt_lines": 33,
+ "validate_sql": [
+  {
+   "draft": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on",
+   "result": {
+    "ok": true,
+    "sql": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on",
+    "columns": [
+     "cust_name",
+     "grade"
+    ],
+    "row_count": 3,
+    "preview": [
+     [
+      "김민준",
+      "VIP"
+     ],
+     [
+      "최유나",
+      "BRONZE"
+     ],
+     [
+      "윤채원",
+      "SILVER"
+     ]
+    ]
+   }
+  },
+  {
+   "draft": "SELECT prod_name, unit_price_krw FROM products WHERE category = 'electronics' AND is_active = 1 ORDER BY unit_price_krw DESC",
+   "result": {
+    "ok": true,
+    "sql": "SELECT prod_name, unit_price_krw FROM products WHERE category = 'electronics' AND is_active = 1 ORDER BY unit_price_krw DESC",
+    "columns": [
+     "prod_name",
+     "unit_price_krw"
+    ],
+    "row_count": 3,
+    "preview": [
+     [
+      "4K 모니터 27인치",
+      459000
+     ],
+     [
+      "노이즈캔슬링 헤드폰",
+      289000
+     ],
+     [
+      "기계식 키보드",
+      139000
+     ]
+    ]
+   }
+  },
+  {
+   "draft": "SELECT status, COUNT(*) FROM orders WHERE ordered_at >= '2026-10-01' AND ordered_at < '2026-11-01' GROUP BY status",
+   "result": {
+    "ok": true,
+    "sql": "SELECT status, COUNT(*) FROM orders WHERE ordered_at >= '2026-10-01' AND ordered_at < '2026-11-01' GROUP BY status",
+    "columns": [
+     "status",
+     "COUNT(*)"
+    ],
+    "row_count": 4,
+    "preview": [
+     [
+      "DELIVERED",
+      1
+     ],
+     [
+      "PAID",
+      1
+     ],
+     [
+      "REFUNDED",
+      1
+     ],
+     [
+      "SHIPPED",
+      1
+     ]
+    ]
+   }
+  },
+  {
+   "draft": "SELECT c.cust_name, SUM(oi.qty * p.unit_price_krw) AS total FROM customers c JOIN orders o ON o.cust_id = c.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY c.cust_id ORDER BY total DESC",
+   "result": {
+    "ok": true,
+    "sql": "SELECT c.cust_name, SUM(oi.qty * p.unit_price_krw) AS total FROM customers c JOIN orders o ON o.cust_id = c.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY c.cust_id ORDER BY total DESC",
+    "columns": [
+     "cust_name",
+     "total"
+    ],
+    "row_count": 6,
+    "preview": [
+     [
+      "한소희",
+      1138000
+     ],
+     [
+      "김민준",
+      1001000
+     ],
+     [
+      "정하준",
+      353000
+     ],
+     [
+      "이서연",
+      327000
+     ],
+     [
+      "윤채원",
+      258000
+     ]
+    ]
+   }
+  },
+  {
+   "draft": "SELECT p.category, SUM(oi.qty) FROM order_items oi JOIN products p ON p.prod_id = oi.prod_id JOIN orders o ON o.order_id = oi.order_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.category",
+   "result": {
+    "ok": true,
+    "sql": "SELECT p.category, SUM(oi.qty) FROM order_items oi JOIN products p ON p.prod_id = oi.prod_id JOIN orders o ON o.order_id = oi.order_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.category",
+    "columns": [
+     "category",
+     "SUM(oi.qty)"
+    ],
+    "row_count": 4,
+    "preview": [
+     [
+      "books",
+      5
+     ],
+     [
+      "electronics",
+      7
+     ],
+     [
+      "fashion",
+      3
+     ],
+     [
+      "food",
+      10
+     ]
+    ]
+   }
+  },
+  {
+   "draft": "SELECT cust_name, city FROM customers WHERE cust_id NOT IN (SELECT cust_id FROM orders)",
+   "result": {
+    "ok": true,
+    "sql": "SELECT cust_name, city FROM customers WHERE cust_id NOT IN (SELECT cust_id FROM orders)",
+    "columns": [
+     "cust_name",
+     "city"
+    ],
+    "row_count": 1,
+    "preview": [
+     [
+      "오지훈",
+      "광주"
+     ]
+    ]
+   }
+  },
+  {
+   "draft": "SELECT p.prod_name, SUM(oi.qty) AS q FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN customers c ON c.cust_id = o.cust_id JOIN products p ON p.prod_id = oi.prod_id WHERE c.grade = 'VIP' AND o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.prod_id ORDER BY q DESC LIMIT 3",
+   "result": {
+    "ok": true,
+    "sql": "SELECT p.prod_name, SUM(oi.qty) AS q FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN customers c ON c.cust_id = o.cust_id JOIN products p ON p.prod_id = oi.prod_id WHERE c.grade = 'VIP' AND o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.prod_id ORDER BY q DESC LIMIT 3",
+    "columns": [
+     "prod_name",
+     "q"
+    ],
+    "row_count": 3,
+    "preview": [
+     [
+      "유기농 원두 1kg",
+      5
+     ],
+     [
+      "수제 그래놀라",
+      4
+     ],
+     [
+      "4K 모니터 27인치",
+      3
+     ]
+    ]
+   }
+  },
+  {
+   "draft": "SELECT DISTINCT o.order_id, c.cust_name, o.ordered_at FROM orders o JOIN customers c ON c.cust_id = o.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE p.is_active = 0",
+   "result": {
+    "ok": true,
+    "sql": "SELECT DISTINCT o.order_id, c.cust_name, o.ordered_at FROM orders o JOIN customers c ON c.cust_id = o.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE p.is_active = 0",
+    "columns": [
+     "order_id",
+     "cust_name",
+     "ordered_at"
+    ],
+    "row_count": 1,
+    "preview": [
+     [
+      1011,
+      "김민준",
+      "2026-11-03 19:20:00"
+     ]
+    ]
+   }
+  },
+  {
+   "draft": "",
+   "result": {
+    "ok": false,
+    "error": "초안 SQL이 비어 있습니다."
+   }
+  },
+  {
+   "draft": "   ",
+   "result": {
+    "ok": false,
+    "error": "초안 SQL이 비어 있습니다."
+   }
+  },
+  {
+   "draft": "```sql\nSELECT COUNT(*) FROM customers;\n```",
+   "result": {
+    "ok": true,
+    "sql": "SELECT COUNT(*) FROM customers",
+    "columns": [
+     "COUNT(*)"
+    ],
+    "row_count": 1,
+    "preview": [
+     [
+      8
+     ]
+    ]
+   }
+  },
+  {
+   "draft": "SELECT 1; SELECT 2",
+   "result": {
+    "ok": false,
+    "error": "SQL 문은 하나만 작성해야 합니다 (세미콜론으로 여러 문장 금지)."
+   }
+  },
+  {
+   "draft": "DELETE FROM customers",
+   "result": {
+    "ok": false,
+    "error": "조회(SELECT/WITH) 문만 허용됩니다. INSERT/UPDATE/DELETE/DDL은 안 됩니다."
+   }
+  },
+  {
+   "draft": "SELECT nope FROM customers",
+   "result": {
+    "ok": false,
+    "error": "OperationalError: no such column: nope",
+    "sql": "SELECT nope FROM customers"
+   }
+  },
+  {
+   "draft": "SELECT * FROM missing_table",
+   "result": {
+    "ok": false,
+    "error": "OperationalError: no such table: missing_table",
+    "sql": "SELECT * FROM missing_table"
+   }
+  },
+  {
+   "draft": "with t as (select 1 as x) select x from t;",
+   "result": {
+    "ok": true,
+    "sql": "with t as (select 1 as x) select x from t",
+    "columns": [
+     "x"
+    ],
+    "row_count": 1,
+    "preview": [
+     [
+      1
+     ]
+    ]
+   }
+  },
+  {
+   "draft": "UPDATE products SET unit_price_krw = 0",
+   "result": {
+    "ok": false,
+    "error": "조회(SELECT/WITH) 문만 허용됩니다. INSERT/UPDATE/DELETE/DDL은 안 됩니다."
+   }
+  },
+  {
+   "draft": "select cust_name from customers where grade = 'VIP' order by cust_name",
+   "result": {
+    "ok": true,
+    "sql": "select cust_name from customers where grade = 'VIP' order by cust_name",
+    "columns": [
+     "cust_name"
+    ],
+    "row_count": 2,
+    "preview": [
+     [
+      "김민준"
+     ],
+     [
+      "한소희"
+     ]
+    ]
+   }
+  }
+ ],
+ "same_result": [
+  {
+   "sql": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on",
+   "expected": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on",
+   "result": true
+  },
+  {
+   "sql": "SELECT prod_name, unit_price_krw FROM products WHERE category = 'electronics' AND is_active = 1 ORDER BY unit_price_krw DESC",
+   "expected": "SELECT prod_name, unit_price_krw FROM products WHERE category = 'electronics' AND is_active = 1 ORDER BY unit_price_krw DESC",
+   "result": true
+  },
+  {
+   "sql": "SELECT status, COUNT(*) FROM orders WHERE ordered_at >= '2026-10-01' AND ordered_at < '2026-11-01' GROUP BY status",
+   "expected": "SELECT status, COUNT(*) FROM orders WHERE ordered_at >= '2026-10-01' AND ordered_at < '2026-11-01' GROUP BY status",
+   "result": true
+  },
+  {
+   "sql": "SELECT c.cust_name, SUM(oi.qty * p.unit_price_krw) AS total FROM customers c JOIN orders o ON o.cust_id = c.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY c.cust_id ORDER BY total DESC",
+   "expected": "SELECT c.cust_name, SUM(oi.qty * p.unit_price_krw) AS total FROM customers c JOIN orders o ON o.cust_id = c.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY c.cust_id ORDER BY total DESC",
+   "result": true
+  },
+  {
+   "sql": "SELECT p.category, SUM(oi.qty) FROM order_items oi JOIN products p ON p.prod_id = oi.prod_id JOIN orders o ON o.order_id = oi.order_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.category",
+   "expected": "SELECT p.category, SUM(oi.qty) FROM order_items oi JOIN products p ON p.prod_id = oi.prod_id JOIN orders o ON o.order_id = oi.order_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.category",
+   "result": true
+  },
+  {
+   "sql": "SELECT cust_name, city FROM customers WHERE cust_id NOT IN (SELECT cust_id FROM orders)",
+   "expected": "SELECT cust_name, city FROM customers WHERE cust_id NOT IN (SELECT cust_id FROM orders)",
+   "result": true
+  },
+  {
+   "sql": "SELECT p.prod_name, SUM(oi.qty) AS q FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN customers c ON c.cust_id = o.cust_id JOIN products p ON p.prod_id = oi.prod_id WHERE c.grade = 'VIP' AND o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.prod_id ORDER BY q DESC LIMIT 3",
+   "expected": "SELECT p.prod_name, SUM(oi.qty) AS q FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN customers c ON c.cust_id = o.cust_id JOIN products p ON p.prod_id = oi.prod_id WHERE c.grade = 'VIP' AND o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.prod_id ORDER BY q DESC LIMIT 3",
+   "result": true
+  },
+  {
+   "sql": "SELECT DISTINCT o.order_id, c.cust_name, o.ordered_at FROM orders o JOIN customers c ON c.cust_id = o.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE p.is_active = 0",
+   "expected": "SELECT DISTINCT o.order_id, c.cust_name, o.ordered_at FROM orders o JOIN customers c ON c.cust_id = o.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE p.is_active = 0",
+   "result": true
+  },
+  {
+   "sql": "SELECT grade, cust_name FROM customers WHERE city = '서울' ORDER BY joined_on",
+   "expected": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on",
+   "result": true
+  },
+  {
+   "sql": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on DESC",
+   "expected": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on",
+   "result": false
+  },
+  {
+   "sql": "SELECT cust_name, grade FROM customers WHERE city = '서울'",
+   "expected": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on",
+   "result": true
+  },
+  {
+   "sql": "SELECT nope FROM customers",
+   "expected": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on",
+   "result": false
+  },
+  {
+   "sql": "SELECT COUNT(*), status FROM orders WHERE ordered_at >= '2026-10-01' AND ordered_at < '2026-11-01' GROUP BY status",
+   "expected": "SELECT status, COUNT(*) FROM orders WHERE ordered_at >= '2026-10-01' AND ordered_at < '2026-11-01' GROUP BY status",
+   "result": true
+  }
+ ],
+ "run_sql": [
+  {
+   "sql": "SELECT cust_name, grade FROM customers WHERE city = '서울' ORDER BY joined_on",
+   "result": [
+    [
+     "cust_name",
+     "grade"
+    ],
+    [
+     [
+      "김민준",
+      "VIP"
+     ],
+     [
+      "최유나",
+      "BRONZE"
+     ],
+     [
+      "윤채원",
+      "SILVER"
+     ]
+    ]
+   ]
+  },
+  {
+   "sql": "SELECT prod_name, unit_price_krw FROM products WHERE category = 'electronics' AND is_active = 1 ORDER BY unit_price_krw DESC",
+   "result": [
+    [
+     "prod_name",
+     "unit_price_krw"
+    ],
+    [
+     [
+      "4K 모니터 27인치",
+      459000
+     ],
+     [
+      "노이즈캔슬링 헤드폰",
+      289000
+     ],
+     [
+      "기계식 키보드",
+      139000
+     ]
+    ]
+   ]
+  },
+  {
+   "sql": "SELECT status, COUNT(*) FROM orders WHERE ordered_at >= '2026-10-01' AND ordered_at < '2026-11-01' GROUP BY status",
+   "result": [
+    [
+     "status",
+     "COUNT(*)"
+    ],
+    [
+     [
+      "DELIVERED",
+      1
+     ],
+     [
+      "PAID",
+      1
+     ],
+     [
+      "REFUNDED",
+      1
+     ],
+     [
+      "SHIPPED",
+      1
+     ]
+    ]
+   ]
+  },
+  {
+   "sql": "SELECT c.cust_name, SUM(oi.qty * p.unit_price_krw) AS total FROM customers c JOIN orders o ON o.cust_id = c.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY c.cust_id ORDER BY total DESC",
+   "result": [
+    [
+     "cust_name",
+     "total"
+    ],
+    [
+     [
+      "한소희",
+      1138000
+     ],
+     [
+      "김민준",
+      1001000
+     ],
+     [
+      "정하준",
+      353000
+     ],
+     [
+      "이서연",
+      327000
+     ],
+     [
+      "윤채원",
+      258000
+     ],
+     [
+      "박지호",
+      27000
+     ]
+    ]
+   ]
+  },
+  {
+   "sql": "SELECT p.category, SUM(oi.qty) FROM order_items oi JOIN products p ON p.prod_id = oi.prod_id JOIN orders o ON o.order_id = oi.order_id WHERE o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.category",
+   "result": [
+    [
+     "category",
+     "SUM(oi.qty)"
+    ],
+    [
+     [
+      "books",
+      5
+     ],
+     [
+      "electronics",
+      7
+     ],
+     [
+      "fashion",
+      3
+     ],
+     [
+      "food",
+      10
+     ]
+    ]
+   ]
+  },
+  {
+   "sql": "SELECT cust_name, city FROM customers WHERE cust_id NOT IN (SELECT cust_id FROM orders)",
+   "result": [
+    [
+     "cust_name",
+     "city"
+    ],
+    [
+     [
+      "오지훈",
+      "광주"
+     ]
+    ]
+   ]
+  },
+  {
+   "sql": "SELECT p.prod_name, SUM(oi.qty) AS q FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN customers c ON c.cust_id = o.cust_id JOIN products p ON p.prod_id = oi.prod_id WHERE c.grade = 'VIP' AND o.status NOT IN ('CANCELLED', 'REFUNDED') GROUP BY p.prod_id ORDER BY q DESC LIMIT 3",
+   "result": [
+    [
+     "prod_name",
+     "q"
+    ],
+    [
+     [
+      "유기농 원두 1kg",
+      5
+     ],
+     [
+      "수제 그래놀라",
+      4
+     ],
+     [
+      "4K 모니터 27인치",
+      3
+     ]
+    ]
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT o.order_id, c.cust_name, o.ordered_at FROM orders o JOIN customers c ON c.cust_id = o.cust_id JOIN order_items oi ON oi.order_id = o.order_id JOIN products p ON p.prod_id = oi.prod_id WHERE p.is_active = 0",
+   "result": [
+    [
+     "order_id",
+     "cust_name",
+     "ordered_at"
+    ],
+    [
+     [
+      1011,
+      "김민준",
+      "2026-11-03 19:20:00"
+     ]
+    ]
+   ]
+  }
+ ]
+}

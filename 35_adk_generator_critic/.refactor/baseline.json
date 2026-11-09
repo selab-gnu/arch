@@ -1,0 +1,26 @@
+{
+  "score": 40.6,
+  "max_file_lines": 454,
+  "complex_count": 3,
+  "max_cc": 19,
+  "complex_top10": [
+    {
+      "name": "adk_generator_critic.py:solve",
+      "cc": 19
+    },
+    {
+      "name": "adk_generator_critic.py:main",
+      "cc": 16
+    },
+    {
+      "name": "adk_generator_critic.py:resolve_model",
+      "cc": 14
+    }
+  ],
+  "files": {
+    "adk_generator_critic.py": {
+      "lines": 454,
+      "mi": 40.6
+    }
+  }
+}
