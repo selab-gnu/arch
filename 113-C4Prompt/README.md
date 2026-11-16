@@ -157,7 +157,7 @@ Level 2의 컨테이너 중 "[API 서버]"를 골라 Level 3 Component 다이어
 Level 3의 "[주문 컴포넌트]"를 골라 Level 4 Code 다이어그램을 만들어줘.
 
 [요구사항]
-- Mermaid classDiagram으로 작성해.
+- Class Diagram으로 작성해.
 - 주요 클래스만 5~10개 포함해. 예시 계층:
   - Controller: OrderController
   - Service: OrderService
